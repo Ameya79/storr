@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "updatedAt": "2026-11-06T08:00:00.000Z",
+  "tracks": [
+    {
+      "id": "b7332903-131f-4994-8f65-cf8c09ddf15d",
+      "name": "main",
+      "emoji": "",
+      "color": "#18181B",
+      "order": 0,
+      "archived": false,
+      "createdAt": "2026-11-06T08:00:00.000Z",
+      "updatedAt": "2026-11-06T08:00:00.000Z"
+    }
+  ],
+  "versions": []
+}
