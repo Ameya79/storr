@@ -7,7 +7,18 @@ import { setConfig, getConfig, decodeSetupCode } from '@/lib/config';
 import { sync } from '@/lib/sync';
 import { showToast } from '@/components/ToastContainer';
 import { GitBranchIcon } from '@/components/SvgIcons';
-import { Github, ArrowRight, ShieldAlert, KeyRound, Database } from 'lucide-react';
+import {
+  Github,
+  ArrowRight,
+  ShieldAlert,
+  KeyRound,
+  Database,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  ShieldCheck,
+  Lock,
+} from 'lucide-react';
 import clsx from 'clsx';
 
 function SetupContent() {
@@ -21,6 +32,7 @@ function SetupContent() {
   const [setupCodeInput, setSetupCodeInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     const existing = getConfig();
@@ -231,6 +243,141 @@ function SetupContent() {
           )}
         </button>
       </form>
+
+      {/* Step-by-Step Repository & Token Guide */}
+      <div className="mt-6 border border-zinc-200/90 rounded-2xl bg-white overflow-hidden shadow-xs">
+        <button
+          type="button"
+          onClick={() => setShowGuide(!showGuide)}
+          className="w-full p-4 flex items-center justify-between text-left hover:bg-zinc-50/70 transition-colors"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-800">
+              <KeyRound size={13} />
+            </div>
+            <div>
+              <span className="font-mono font-bold text-xs text-zinc-950 block">
+                How to Connect to GitHub
+              </span>
+              <span className="text-[11px] font-mono text-zinc-500">
+                Private repo, fine-grained PAT & security scoping
+              </span>
+            </div>
+          </div>
+          {showGuide ? (
+            <ChevronUp size={15} className="text-zinc-500" />
+          ) : (
+            <ChevronDown size={15} className="text-zinc-500" />
+          )}
+        </button>
+
+        {showGuide && (
+          <div className="px-4 pb-5 pt-1 space-y-4 text-xs font-mono border-t border-zinc-100">
+            {/* Step 1 */}
+            <div className="space-y-1.5 pt-2">
+              <div className="flex items-center gap-2 text-zinc-900 font-bold">
+                <span className="w-5 h-5 rounded-full bg-zinc-950 text-white text-[10px] flex items-center justify-center">
+                  1
+                </span>
+                <span>Create a Private Repository</span>
+              </div>
+              <p className="text-zinc-600 pl-7 leading-relaxed">
+                Go to{' '}
+                <a
+                  href="https://github.com/new"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-zinc-950 underline underline-offset-2 inline-flex items-center gap-0.5"
+                >
+                  github.com/new <ExternalLink size={10} />
+                </a>{' '}
+                and name your repository (e.g.{' '}
+                <code className="bg-zinc-100 px-1 py-0.5 rounded text-zinc-800">my-resumes</code>
+                ).
+              </p>
+              <div className="ml-7 p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-[11px] text-zinc-700">
+                <span className="font-bold text-zinc-950">Important:</span> Choose{' '}
+                <span className="font-bold text-zinc-950">Private</span> so your personal resumes,
+                contact details, and career notes are never publicly visible on the internet.
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-zinc-900 font-bold">
+                <span className="w-5 h-5 rounded-full bg-zinc-950 text-white text-[10px] flex items-center justify-center">
+                  2
+                </span>
+                <span>Generate a Fine-Grained Token</span>
+              </div>
+              <p className="text-zinc-600 pl-7 leading-relaxed">
+                In GitHub, go to{' '}
+                <a
+                  href="https://github.com/settings/tokens?type=beta"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-zinc-950 underline underline-offset-2 inline-flex items-center gap-0.5"
+                >
+                  Settings &gt; Developer Settings &gt; Personal access tokens &gt; Fine-grained
+                  tokens <ExternalLink size={10} />
+                </a>{' '}
+                and click{' '}
+                <span className="font-medium text-zinc-800">&quot;Generate new token&quot;</span>.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-zinc-900 font-bold">
+                <span className="w-5 h-5 rounded-full bg-zinc-950 text-white text-[10px] flex items-center justify-center">
+                  3
+                </span>
+                <span>Set Strict Token Scopes</span>
+              </div>
+              <div className="ml-7 space-y-2 text-zinc-600">
+                <p className="leading-relaxed">
+                  Configure these two specific options for maximum account security:
+                </p>
+                <ul className="space-y-1.5 list-disc pl-4 text-[11px]">
+                  <li>
+                    <span className="font-bold text-zinc-900">Repository access:</span> Select{' '}
+                    <span className="font-semibold text-zinc-950">
+                      &quot;Only select repositories&quot;
+                    </span>{' '}
+                    and choose your private repo. This guarantees storr. cannot access any other repo
+                    in your account.
+                  </li>
+                  <li>
+                    <span className="font-bold text-zinc-900">Repository permissions:</span> Find{' '}
+                    <span className="font-semibold text-zinc-950">Contents</span> and select{' '}
+                    <span className="font-semibold text-zinc-950">&quot;Read and write&quot;</span>.
+                    No other permissions are needed.
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Step 4 */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center gap-2 text-zinc-900 font-bold">
+                <span className="w-5 h-5 rounded-full bg-zinc-950 text-white text-[10px] flex items-center justify-center">
+                  4
+                </span>
+                <span>Permanent Local Storage Guarantee</span>
+              </div>
+              <p className="text-zinc-600 pl-7 leading-relaxed text-[11px]">
+                Once entered, your token is dual-persisted locally in your browser&apos;s sandboxed{' '}
+                <span className="font-medium text-zinc-900">localStorage</span> and{' '}
+                <span className="font-medium text-zinc-900">IndexedDB</span>. It will{' '}
+                <span className="font-bold text-zinc-950">never be forgotten</span> across sessions
+                or browser restarts unless you manually click{' '}
+                <span className="font-medium text-zinc-900">&quot;Disconnect Private Repository&quot;</span>{' '}
+                in Settings.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Architecture footnote */}
       <div className="mt-8 text-center border-t border-zinc-100 pt-5 text-[11px] font-mono text-zinc-400">

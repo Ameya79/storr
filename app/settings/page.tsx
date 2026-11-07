@@ -38,6 +38,8 @@ import {
   AlertTriangle,
   Trash2,
   Database,
+  Lock,
+  KeyRound,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -401,16 +403,43 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Disconnect / Sign Out */}
-      <div className="pt-2">
-        <button
-          type="button"
-          onClick={() => setIsConfirmingSignOut(true)}
-          className="w-full py-3 px-4 rounded-xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950 font-mono text-xs font-medium transition-all flex items-center justify-center gap-2"
-        >
-          <LogOut size={14} />
-          <span>Disconnect Private Repository</span>
-        </button>
+      {/* Credential Security, Persistence & Disconnect */}
+      <div className="p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-subtle space-y-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-800">
+            <Lock size={15} />
+          </div>
+          <div>
+            <h3 className="text-xs font-mono font-bold text-zinc-900 uppercase tracking-wider">
+              Token Security & Persistence
+            </h3>
+            <p className="text-[11px] font-mono text-zinc-400">
+              Dual-persisted locally in localStorage + IndexedDB
+            </p>
+          </div>
+        </div>
+
+        <p className="text-xs font-mono text-zinc-600 leading-relaxed">
+          Your GitHub Personal Access Token is stored exclusively on this device. <span className="font-bold text-zinc-950">storr. will never forget your token</span> across browser restarts, low-disk storage cleanups, or iOS Safari eviction cycles.
+        </p>
+
+        <div className="bg-zinc-50 rounded-xl p-3 border border-zinc-200/80 text-[11px] font-mono text-zinc-600 space-y-1">
+          <span className="font-bold text-zinc-900 block">How to Erase Credentials:</span>
+          <p>
+            To revoke access and remove your token and cached resumes from this device, click the button below. Your private repository on GitHub remains completely untouched.
+          </p>
+        </div>
+
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setIsConfirmingSignOut(true)}
+            className="w-full py-3 px-4 rounded-xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950 font-mono text-xs font-medium transition-all flex items-center justify-center gap-2"
+          >
+            <LogOut size={14} />
+            <span>Disconnect Private Repository</span>
+          </button>
+        </div>
       </div>
 
       {/* Edit Branch Bottom Sheet */}

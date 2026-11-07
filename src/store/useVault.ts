@@ -11,6 +11,7 @@ import {
   setLastSyncAt,
 } from '@/lib/cache';
 import { compareVersionsDesc, latest } from '@/lib/dates';
+import { restoreConfigFromIndexedDB } from '@/lib/config';
 
 interface VaultState {
   manifest: Manifest | null;
@@ -110,6 +111,9 @@ export const useVault = create<VaultState>((set, get) => ({
 
   hydrate: async () => {
     try {
+      // Ensure credentials survived any localStorage eviction
+      await restoreConfigFromIndexedDB();
+
       const [manifest, manifestSha, outbox, lastSyncAt] = await Promise.all([
         getCachedManifest(),
         getCachedManifestSha(),

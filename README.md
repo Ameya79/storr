@@ -107,24 +107,36 @@ npm run build
 ### Step 1: Create a Private GitHub Repository
 1. Navigate to [github.com/new](https://github.com/new).
 2. Enter a repository name (e.g. `my-resumes`).
-3. Set visibility to **Private** (recommended to keep your resume and personal data secure).
+3. Set visibility to **Private** (**Crucial**: Keeps your resume documents, contact details, and career notes safe from public internet crawlers and search engine indexing).
 4. Click **Create repository**.
 
 ### Step 2: Generate a Fine-Grained Personal Access Token (PAT)
-1. Go to [GitHub Settings -> Developer Settings -> Personal access tokens -> Fine-grained tokens](https://github.com/settings/tokens?type=beta).
+1. Navigate to [GitHub Settings -> Developer Settings -> Personal access tokens -> Fine-grained tokens](https://github.com/settings/tokens?type=beta).
 2. Click **Generate new token**.
-3. Fill in the token details:
+3. Configure the token with strict least-privilege scoping:
    * **Token name**: `storr-storage-token`
    * **Expiration**: 90 days or 1 year
-   * **Repository access**: Choose **Only select repositories**, then select your private repository (e.g. `my-resumes`).
-   * **Permissions**: Under **Repository permissions**, find **Contents** and set it to **Read and write**.
+   * **Repository access**: Choose **Only select repositories**, then select your private storage repository (e.g. `my-resumes`). *This guarantees storr. has zero access to any other repositories in your GitHub account.*
+   * **Permissions**: Under **Repository permissions**, find **Contents** and set it to **Read and write**. *No other permissions are required.*
 4. Click **Generate token** and copy the string (starts with `github_pat_`).
 
-### Step 3: Connect `storr.`
+### Step 3: Connect `storr.` & Permanent Storage
 1. Open `storr.` in your browser.
 2. If opening for the first time, you will automatically be directed to the `/setup` screen.
 3. Enter your GitHub username, your repository name, and paste your Personal Access Token.
 4. Click **Connect & Sync**. Your vault is now live and synchronized!
+
+---
+
+## Token Security, Persistence & Erasure
+
+* **Permanent Dual-Storage Persistence**: Credentials are dual-persisted locally in your browser's sandboxed `localStorage` and `IndexedDB`. `storr.` will **never forget your token** across browser restarts, low-disk storage cleanups, or iOS Safari 7-day eviction cycles.
+* **Zero Third-Party Cloud Exposure**: Your token and resumes are transmitted exclusively over encrypted HTTPS directly between your device and GitHub's official REST API. No intermediate backend server or proxy ever sees your token.
+* **How to Erase or Disconnect**:
+  1. Open **Settings** from the bottom bar or left navigation.
+  2. Scroll down to **Token Security & Persistence**.
+  3. Click **Disconnect Private Repository** and confirm.
+  4. Your GitHub Personal Access Token and all locally cached resumes will be instantly and permanently wiped from this device. (Your files and commit history on GitHub remain 100% intact).
 
 ---
 

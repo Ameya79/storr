@@ -82,7 +82,7 @@ if (!fs.existsSync(iconsDir)) {
   fs.mkdirSync(iconsDir, { recursive: true });
 }
 
-// Indigo color #6366F1 -> (99, 102, 241)
+// Obsidian color #09090B -> (9, 9, 11)
 const iconSizes = [
   { name: 'icon-192.png', size: 192 },
   { name: 'icon-512.png', size: 512 },
@@ -91,7 +91,7 @@ const iconSizes = [
 ];
 
 for (const { name, size } of iconSizes) {
-  const png = createSolidPng(size, size, 99, 102, 241);
+  const png = createSolidPng(size, size, 9, 9, 11);
   fs.writeFileSync(path.join(iconsDir, name), png);
   console.log(`Generated ${name} (${size}x${size})`);
 }

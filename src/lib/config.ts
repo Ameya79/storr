@@ -1,4 +1,5 @@
 import { GithubConfig } from '@/types';
+import { getCachedConfig, setCachedConfig, clearCachedConfig } from '@/lib/cache';
 
 export const CONFIG_STORAGE_KEY = 'rv.config';
 export const DISCONNECTED_STORAGE_KEY = 'rv.disconnected';
@@ -56,6 +57,8 @@ export function setConfig(config: GithubConfig): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(DISCONNECTED_STORAGE_KEY);
     localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(clean));
+    // Dual-persist to IndexedDB to survive localStorage eviction
+    setCachedConfig(clean).catch(() => {});
   }
 }
 
@@ -63,6 +66,33 @@ export function clearConfig(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(CONFIG_STORAGE_KEY);
     localStorage.setItem(DISCONNECTED_STORAGE_KEY, 'true');
+    // Clear from IndexedDB as well
+    clearCachedConfig().catch(() => {});
+  }
+}
+
+/**
+ * Restores configuration from IndexedDB if localStorage was evicted by browser cleanup.
+ * Guarantees credentials are never forgotten unless the user manually disconnects.
+ */
+export async function restoreConfigFromIndexedDB(): Promise<GithubConfig | null> {
+  try {
+    if (typeof window === 'undefined') return null;
+
+    const isDisconnected = localStorage.getItem(DISCONNECTED_STORAGE_KEY) === 'true';
+    if (isDisconnected) return null;
+
+    const existing = getConfig(false);
+    if (existing) return existing;
+
+    const idbConfig = await getCachedConfig();
+    if (idbConfig && idbConfig.owner && idbConfig.repo && idbConfig.token) {
+      localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(idbConfig));
+      return idbConfig;
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 

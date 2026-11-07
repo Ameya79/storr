@@ -1,11 +1,12 @@
 import { get, set, del, keys } from 'idb-keyval';
-import { Manifest, OutboxOp } from '@/types';
+import { Manifest, OutboxOp, GithubConfig } from '@/types';
 
 const KEY_MANIFEST = 'rv:manifest';
 const KEY_MANIFEST_SHA = 'rv:manifestSha';
 const KEY_OUTBOX = 'rv:outbox';
 const KEY_LAST_SYNC_AT = 'rv:lastSyncAt';
 const KEY_BLOB_META = 'rv:blob_meta';
+const KEY_CONFIG_VAULT = 'rv:config_vault';
 const PREFIX_BLOB = 'rv:blob:';
 
 export const MAX_BLOB_CACHE_BYTES = 150 * 1024 * 1024; // 150 MB
@@ -49,6 +50,18 @@ export async function getLastSyncAt(): Promise<string | null> {
 
 export async function setLastSyncAt(time: string): Promise<void> {
   await set(KEY_LAST_SYNC_AT, time);
+}
+
+export async function getCachedConfig(): Promise<GithubConfig | null> {
+  return (await get<GithubConfig>(KEY_CONFIG_VAULT)) || null;
+}
+
+export async function setCachedConfig(config: GithubConfig): Promise<void> {
+  await set(KEY_CONFIG_VAULT, config);
+}
+
+export async function clearCachedConfig(): Promise<void> {
+  await del(KEY_CONFIG_VAULT);
 }
 
 async function getBlobMetaMap(): Promise<BlobMetaMap> {

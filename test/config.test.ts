@@ -5,6 +5,7 @@ import {
   clearConfig,
   encodeSetupCode,
   decodeSetupCode,
+  restoreConfigFromIndexedDB,
 } from '@/lib/config';
 import { GithubConfig } from '@/types';
 
@@ -52,6 +53,34 @@ describe('config.ts unit tests', () => {
     expect(decodeSetupCode('')).toBeNull();
     expect(decodeSetupCode('invalid-base-64-content!')).toBeNull();
     expect(decodeSetupCode(btoa(JSON.stringify({ wrong: 'fields' })))).toBeNull();
+  });
+
+  it('restores config from IndexedDB if localStorage is evicted', async () => {
+    const config: GithubConfig = {
+      owner: 'survivor',
+      repo: 'resume-data',
+      token: 'github_pat_survives_cleanup',
+    };
+
+    setConfig(config);
+    // Allow asynchronous IndexedDB write to resolve
+    await new Promise((r) => setTimeout(r, 20));
+
+    // Simulate browser eviction of localStorage
+    localStorage.clear();
+    expect(getConfig(false)).toBeNull();
+
+    // Call restoreConfigFromIndexedDB
+    const restored = await restoreConfigFromIndexedDB();
+    expect(restored).toEqual(config);
+    expect(getConfig(false)).toEqual(config);
+
+    // Explicit clearConfig must wipe both
+    clearConfig();
+    await new Promise((r) => setTimeout(r, 20));
+    localStorage.clear();
+    const afterClear = await restoreConfigFromIndexedDB();
+    expect(afterClear).toBeNull();
   });
 });
 
