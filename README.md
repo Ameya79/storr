@@ -1,6 +1,23 @@
-# storr.
+<p align="center">
+  <img src="public/favicon.svg" width="80" height="80" alt="storr. logo" />
+</p>
 
-> A private, Git-powered career resume version control system with visual commit history, offline-first synchronization, and zero cloud hosting costs.
+<h1 align="center">storr.</h1>
+
+<p align="center">
+  <strong>A private, Git-powered career resume version control system with visual commit history, offline-first synchronization, and zero cloud hosting costs.</strong>
+</p>
+
+<p align="center">
+  <a href="#key-features">Features</a> •
+  <a href="#architecture-overview">Architecture</a> •
+  <a href="#getting-started">Quickstart</a> •
+  <a href="#vault-setup-guide">Vault Setup</a> •
+  <a href="#deploying-to-vercel">Deploy to Vercel</a> •
+  <a href="#installing-as-a-mobile-app-pwa">Mobile PWA</a>
+</p>
+
+<br />
 
 `storr.` treats your career documents like software repositories. Create branches for distinct roles (e.g., `product-lead`, `systems-architect`, `consulting`), commit chronological revisions with detailed notes, compare versions visually, and synchronize seamlessly across mobile and desktop devices using your own private GitHub repository as a zero-cost serverless vault.
 
