@@ -179,6 +179,13 @@ function AddVersionContent() {
         tags: tags.length > 0 ? tags : undefined,
       });
 
+      // Update global metrics counter
+      fetch('/api/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resume_committed' }),
+      }).catch(() => {});
+
       setActiveBranchId(selectedBranchId);
       showToast({ type: 'success', message: 'Committed to branch. Syncing outbox…' });
       router.push(`/branch/${selectedBranchId}`);

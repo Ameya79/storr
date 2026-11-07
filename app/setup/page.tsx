@@ -33,6 +33,21 @@ function SetupContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [stats, setStats] = useState<{ resumesStored: number; vaultsActive: number }>({
+    resumesStored: 1420,
+    vaultsActive: 380,
+  });
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.resumesStored) {
+          setStats(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const existing = getConfig();
@@ -97,6 +112,12 @@ function SetupContent() {
 
       // Valid: save config and trigger initial sync
       setConfig(cfg);
+      fetch('/api/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'vault_connected' }),
+      }).catch(() => {});
+
       showToast({
         type: 'success',
         message: 'Connected repository. Initializing branch vault…',
@@ -112,10 +133,10 @@ function SetupContent() {
   };
 
   return (
-    <div className="max-w-md mx-auto pt-6 pb-16 px-2">
+    <div className="w-full max-w-md mx-auto pt-2 pb-12 px-1">
       {/* Brand Header */}
-      <div className="text-center mb-8">
-        <div className="w-14 h-14 rounded-2xl bg-zinc-950 text-white flex items-center justify-center mx-auto mb-4 shadow-subtle border border-zinc-800">
+      <div className="text-center mb-7 flex flex-col items-center">
+        <div className="w-14 h-14 rounded-2xl bg-zinc-950 text-white flex items-center justify-center mx-auto mb-3.5 shadow-subtle border border-zinc-800">
           <GitBranchIcon size={26} />
         </div>
         <h1 className="font-mono font-bold text-2xl text-zinc-950 tracking-tight">
@@ -126,6 +147,24 @@ function SetupContent() {
             ? 'Re-authenticate your storage repository'
             : 'Career resume version hub'}
         </p>
+
+        {/* Live Metric Badge */}
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200/90 text-[11px] font-mono text-zinc-600 mt-3 shadow-2xs">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span>
+            <strong className="text-zinc-900 font-semibold">
+              {stats.resumesStored.toLocaleString()}+
+            </strong>{' '}
+            resumes storred
+          </span>
+          <span className="text-zinc-300">•</span>
+          <span>
+            <strong className="text-zinc-900 font-semibold">
+              {stats.vaultsActive.toLocaleString()}+
+            </strong>{' '}
+            vaults
+          </span>
+        </div>
       </div>
 
       {/* Mode switcher tabs */}

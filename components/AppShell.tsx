@@ -13,6 +13,7 @@ import { SyncDot } from '@/src/components/SyncDot';
 import { GitBranchIcon } from '@/components/SvgIcons';
 import { InstallPwaHeaderButton } from '@/components/InstallPwaPrompt';
 import Link from 'next/link';
+import clsx from 'clsx';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -82,8 +83,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 lg:pl-64 pb-28 lg:pb-12 pt-safe">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+      <main
+        className={clsx(
+          'flex-1 pb-28 lg:pb-12 pt-safe',
+          !isSetupRoute ? 'lg:pl-64' : 'flex flex-col items-center justify-center min-h-[92vh]'
+        )}
+      >
+        <div
+          className={clsx(
+            'w-full px-4 sm:px-6 lg:px-8 py-5',
+            !isSetupRoute ? 'max-w-4xl mx-auto' : 'max-w-md mx-auto flex flex-col justify-center'
+          )}
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
