@@ -60,6 +60,7 @@ interface VaultState {
   softDeleteVersion: (id: string) => Promise<void>;
   restoreVersion: (id: string) => Promise<void>;
   purgeVersion: (id: string) => Promise<void>;
+  emptyAllTrash: () => Promise<void>;
 
   // Outbox management
   appendOutboxOp: (op: OutboxOp) => Promise<void>;
@@ -98,6 +99,8 @@ export const createDefaultManifest = (): Manifest => ({
     },
   ],
   versions: [],
+  purgedVersionIds: [],
+  purgedTrackIds: [],
 });
 
 export const useVault = create<VaultState>((set, get) => ({
@@ -223,12 +226,17 @@ export const useVault = create<VaultState>((set, get) => ({
     if (!updatedBranch) return;
 
     const nextManifest: Manifest = { ...current, updatedAt: now, tracks };
-    await setCachedManifest(nextManifest);
     const op: OutboxOp = { type: 'UPSERT_TRACK', track: updatedBranch, id };
     const nextOutbox = [...get().outbox, op];
-    await setCachedOutbox(nextOutbox);
 
+    // Synchronous state commit first
     set({ manifest: nextManifest, outbox: nextOutbox });
+
+    await Promise.all([
+      setCachedManifest(nextManifest),
+      setCachedOutbox(nextOutbox),
+    ]);
+
     requestDebouncedSync();
   },
   updateTrack: async (id, updates) => get().updateBranch(id, updates),
@@ -249,17 +257,21 @@ export const useVault = create<VaultState>((set, get) => ({
     });
 
     const nextManifest: Manifest = { ...current, updatedAt: now, tracks: updatedTracks };
-    await setCachedManifest(nextManifest);
-
     const newOps: OutboxOp[] = updatedTracks.map((track) => ({
       type: 'UPSERT_TRACK',
       track,
       id: track.id,
     }));
     const nextOutbox = [...get().outbox, ...newOps];
-    await setCachedOutbox(nextOutbox);
 
+    // Synchronous state commit first
     set({ manifest: nextManifest, outbox: nextOutbox });
+
+    await Promise.all([
+      setCachedManifest(nextManifest),
+      setCachedOutbox(nextOutbox),
+    ]);
+
     requestDebouncedSync();
   },
   reorderTracks: async (orderedIds) => get().reorderBranches(orderedIds),
@@ -314,12 +326,18 @@ export const useVault = create<VaultState>((set, get) => ({
     }
 
     // Mark branch with deletedAt tombstone so sync preserves deletion across devices
+    let deletedTrack: Branch | null = null;
     const updatedTracks = current.tracks.map((t) => {
       if (t.id === id) {
-        return { ...t, deletedAt: now, updatedAt: now };
+        deletedTrack = { ...t, deletedAt: now, updatedAt: now };
+        return deletedTrack;
       }
       return t;
     });
+
+    if (deletedTrack) {
+      additionalOps.push({ type: 'UPSERT_TRACK', track: deletedTrack, id });
+    }
 
     const nextManifest: Manifest = {
       ...current,
@@ -328,18 +346,21 @@ export const useVault = create<VaultState>((set, get) => ({
       versions: nextVersions,
     };
 
-    await setCachedManifest(nextManifest);
     const nextOutbox = [...get().outbox, ...additionalOps];
-    await setCachedOutbox(nextOutbox);
-
     const nextActiveId =
       get().activeBranchId === id ? fallbackBranchId : get().activeBranchId;
 
+    // Synchronous state commit first
     set({
       manifest: nextManifest,
       outbox: nextOutbox,
       activeBranchId: nextActiveId,
     });
+
+    await Promise.all([
+      setCachedManifest(nextManifest),
+      setCachedOutbox(nextOutbox),
+    ]);
 
     requestDebouncedSync();
     return { success: true };
@@ -403,12 +424,17 @@ export const useVault = create<VaultState>((set, get) => ({
     if (!updatedVersion) return;
 
     const nextManifest: Manifest = { ...current, updatedAt: now, versions };
-    await setCachedManifest(nextManifest);
     const op: OutboxOp = { type: 'UPSERT_VERSION', version: updatedVersion, id };
     const nextOutbox = [...get().outbox, op];
-    await setCachedOutbox(nextOutbox);
 
+    // Synchronous state commit first
     set({ manifest: nextManifest, outbox: nextOutbox });
+
+    await Promise.all([
+      setCachedManifest(nextManifest),
+      setCachedOutbox(nextOutbox),
+    ]);
+
     requestDebouncedSync();
   },
 
@@ -429,12 +455,17 @@ export const useVault = create<VaultState>((set, get) => ({
     });
 
     const nextManifest: Manifest = { ...current, updatedAt: now, versions };
-    await setCachedManifest(nextManifest);
     const op: OutboxOp = { type: 'SOFT_DELETE_VERSION', versionId: id, deletedAt: now };
     const nextOutbox = [...get().outbox, op];
-    await setCachedOutbox(nextOutbox);
 
+    // Synchronous state commit first
     set({ manifest: nextManifest, outbox: nextOutbox });
+
+    await Promise.all([
+      setCachedManifest(nextManifest),
+      setCachedOutbox(nextOutbox),
+    ]);
+
     requestDebouncedSync();
   },
 
@@ -443,20 +474,40 @@ export const useVault = create<VaultState>((set, get) => ({
     if (!current) return;
     const now = new Date().toISOString();
 
+    // Verify track still exists and is not deleted
+    const activeTracks = current.tracks.filter((t) => !t.deletedAt);
+    const fallbackTrackId =
+      activeTracks.find((t) => t.name === 'main')?.id || activeTracks[0]?.id || '';
+
     const versions = current.versions.map((v) => {
       if (v.id === id) {
-        return { ...v, deletedAt: null, updatedAt: now };
+        const branchExists = activeTracks.some((t) => t.id === v.trackId);
+        const resolvedTrackId = branchExists ? v.trackId : fallbackTrackId;
+        return { ...v, trackId: resolvedTrackId, deletedAt: null, updatedAt: now };
       }
       return v;
     });
 
-    const nextManifest: Manifest = { ...current, updatedAt: now, versions };
-    await setCachedManifest(nextManifest);
+    const nextPurged = (current.purgedVersionIds || []).filter((pId) => pId !== id);
+
+    const nextManifest: Manifest = {
+      ...current,
+      updatedAt: now,
+      versions,
+      purgedVersionIds: nextPurged,
+    };
+
     const op: OutboxOp = { type: 'RESTORE_VERSION', versionId: id, updatedAt: now };
     const nextOutbox = [...get().outbox, op];
-    await setCachedOutbox(nextOutbox);
 
+    // Synchronous state commit first
     set({ manifest: nextManifest, outbox: nextOutbox });
+
+    await Promise.all([
+      setCachedManifest(nextManifest),
+      setCachedOutbox(nextOutbox),
+    ]);
+
     requestDebouncedSync();
   },
 
@@ -468,8 +519,15 @@ export const useVault = create<VaultState>((set, get) => ({
 
     const now = new Date().toISOString();
     const versions = current.versions.filter((v) => v.id !== id);
-    const nextManifest: Manifest = { ...current, updatedAt: now, versions };
-    await setCachedManifest(nextManifest);
+    const existingPurged = current.purgedVersionIds || [];
+    const nextPurged = Array.from(new Set([...existingPurged, id]));
+
+    const nextManifest: Manifest = {
+      ...current,
+      updatedAt: now,
+      versions,
+      purgedVersionIds: nextPurged,
+    };
 
     const ops: OutboxOp[] = [
       { type: 'PURGE_VERSION', versionId: id },
@@ -480,9 +538,58 @@ export const useVault = create<VaultState>((set, get) => ({
     }
 
     const nextOutbox = [...get().outbox, ...ops];
-    await setCachedOutbox(nextOutbox);
 
+    // Synchronous state commit first
     set({ manifest: nextManifest, outbox: nextOutbox });
+
+    await Promise.all([
+      setCachedManifest(nextManifest),
+      setCachedOutbox(nextOutbox),
+    ]);
+
+    requestDebouncedSync();
+  },
+
+  emptyAllTrash: async () => {
+    const current = get().manifest;
+    if (!current) return;
+
+    const trashVersions = current.versions.filter((v) => v.deletedAt !== null);
+    if (trashVersions.length === 0) return;
+
+    const now = new Date().toISOString();
+    const trashIds = new Set(trashVersions.map((v) => v.id));
+    const versions = current.versions.filter((v) => !trashIds.has(v.id));
+
+    const existingPurged = current.purgedVersionIds || [];
+    const nextPurged = Array.from(new Set([...existingPurged, ...trashIds]));
+
+    const nextManifest: Manifest = {
+      ...current,
+      updatedAt: now,
+      versions,
+      purgedVersionIds: nextPurged,
+    };
+
+    const ops: OutboxOp[] = [];
+    for (const v of trashVersions) {
+      ops.push({ type: 'PURGE_VERSION', versionId: v.id });
+      ops.push({ type: 'DELETE_BLOB', path: v.filePath });
+      if (v.thumbPath) {
+        ops.push({ type: 'DELETE_BLOB', path: v.thumbPath });
+      }
+    }
+
+    const nextOutbox = [...get().outbox, ...ops];
+
+    // Synchronous state commit first
+    set({ manifest: nextManifest, outbox: nextOutbox });
+
+    await Promise.all([
+      setCachedManifest(nextManifest),
+      setCachedOutbox(nextOutbox),
+    ]);
+
     requestDebouncedSync();
   },
 }));

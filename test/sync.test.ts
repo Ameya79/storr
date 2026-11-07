@@ -233,6 +233,85 @@ describe('sync.ts unit tests', () => {
       expect(merged.tracks.length).toBe(1);
       expect(merged.tracks[0].deletedAt).toBe('2026-11-06T12:00:00.000Z');
     });
+
+    it('strictly excludes purged versions from merge even if remote still contains them', () => {
+      const vPurged: Version = {
+        id: 'v-purged-123',
+        trackId: 't1',
+        label: 'Purged Resume',
+        versionDate: '2026-11-01',
+        fileName: 'purged.pdf',
+        mime: 'application/pdf',
+        sizeBytes: 1000,
+        sha256: 'sha-purged',
+        filePath: 'files/purged.pdf',
+        thumbPath: null,
+        createdAt: '2026-11-01T00:00:00.000Z',
+        updatedAt: '2026-11-01T00:00:00.000Z',
+        deletedAt: '2026-11-06T10:00:00.000Z',
+      };
+
+      const local: Manifest = {
+        schema: 1,
+        updatedAt: '2026-11-07T12:00:00.000Z',
+        tracks: [],
+        versions: [], // purged locally
+        purgedVersionIds: ['v-purged-123'],
+      };
+
+      const remote: Manifest = {
+        schema: 1,
+        updatedAt: '2026-11-06T10:00:00.000Z',
+        tracks: [],
+        versions: [vPurged], // still exists on remote
+        purgedVersionIds: [],
+      };
+
+      const merged = mergeManifests(local, remote);
+      // Must NOT resurrect vPurged!
+      expect(merged.versions.length).toBe(0);
+      expect(merged.purgedVersionIds).toContain('v-purged-123');
+    });
+
+    it('cross-device purge: Device B syncs and removes local version when remote manifest has purgedVersionIds', () => {
+      const vDeviceB: Version = {
+        id: 'v-shared-999',
+        trackId: 't1',
+        label: 'Shared Resume',
+        versionDate: '2026-11-01',
+        fileName: 'shared.pdf',
+        mime: 'application/pdf',
+        sizeBytes: 1000,
+        sha256: 'sha-shared',
+        filePath: 'files/shared.pdf',
+        thumbPath: null,
+        createdAt: '2026-11-01T00:00:00.000Z',
+        updatedAt: '2026-11-01T00:00:00.000Z',
+        deletedAt: null,
+      };
+
+      // Device B has it locally
+      const localDeviceB: Manifest = {
+        schema: 1,
+        updatedAt: '2026-11-01T00:00:00.000Z',
+        tracks: [],
+        versions: [vDeviceB],
+      };
+
+      // Remote from Device A has purged it
+      const remoteFromDeviceA: Manifest = {
+        schema: 1,
+        updatedAt: '2026-11-07T15:00:00.000Z',
+        tracks: [],
+        versions: [],
+        purgedVersionIds: ['v-shared-999'],
+      };
+
+      const merged = mergeManifests(localDeviceB, remoteFromDeviceA);
+      // Device B must drop the version because remote recorded it as purged
+      expect(merged.versions.length).toBe(0);
+      expect(merged.purgedVersionIds).toContain('v-shared-999');
+    });
   });
 
   describe('hasSemanticManifestDiff', () => {

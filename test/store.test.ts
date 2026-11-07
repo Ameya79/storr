@@ -182,10 +182,75 @@ describe('useVault and cache.ts unit tests', () => {
       // Purge
       await useVault.getState().purgeVersion(version.id);
       expect(useVault.getState().manifest!.versions.some((x) => x.id === version.id)).toBe(false);
+      expect(useVault.getState().manifest!.purgedVersionIds).toContain(version.id);
 
       const deleteOps = useVault.getState().outbox.filter((o) => o.type === 'DELETE_BLOB');
       expect(deleteOps.some((o) => o.type === 'DELETE_BLOB' && o.path === 'files/v1.pdf')).toBe(true);
       expect(deleteOps.some((o) => o.type === 'DELETE_BLOB' && o.path === 'thumbs/v1.webp')).toBe(true);
+    });
+
+    it('atomically empties all trash versions in a single operation', async () => {
+      const trackId = useVault.getState().manifest!.tracks[0].id;
+      const v1 = await useVault.getState().addVersion({
+        trackId,
+        label: 'Trash 1',
+        versionDate: '2026-11-01',
+        fileName: 't1.pdf',
+        mime: 'application/pdf',
+        sizeBytes: 1000,
+        sha256: 'sha-t1',
+        filePath: 'files/t1.pdf',
+        thumbPath: null,
+      });
+
+      const v2 = await useVault.getState().addVersion({
+        trackId,
+        label: 'Trash 2',
+        versionDate: '2026-11-02',
+        fileName: 't2.pdf',
+        mime: 'application/pdf',
+        sizeBytes: 1000,
+        sha256: 'sha-t2',
+        filePath: 'files/t2.pdf',
+        thumbPath: null,
+      });
+
+      await useVault.getState().softDeleteVersion(v1.id);
+      await useVault.getState().softDeleteVersion(v2.id);
+      expect(selectTrashVersions(useVault.getState().manifest).length).toBe(2);
+
+      await useVault.getState().emptyAllTrash();
+      expect(selectTrashVersions(useVault.getState().manifest).length).toBe(0);
+      expect(useVault.getState().manifest!.purgedVersionIds).toContain(v1.id);
+      expect(useVault.getState().manifest!.purgedVersionIds).toContain(v2.id);
+    });
+
+    it('reassigns version to main branch upon restore if its original branch was deleted', async () => {
+      const mainTrack = useVault.getState().manifest!.tracks[0];
+      const sideBranch = await useVault.getState().addBranch({ name: 'finance', color: '#059669' });
+
+      const v = await useVault.getState().addVersion({
+        trackId: sideBranch.id,
+        label: 'Finance Resume',
+        versionDate: '2026-11-01',
+        fileName: 'f.pdf',
+        mime: 'application/pdf',
+        sizeBytes: 1000,
+        sha256: 'sha-f',
+        filePath: 'files/f.pdf',
+        thumbPath: null,
+      });
+
+      // Soft delete version, then delete the branch
+      await useVault.getState().softDeleteVersion(v.id);
+      await useVault.getState().deleteBranch(sideBranch.id, { deleteResumes: false });
+
+      // Restore version
+      await useVault.getState().restoreVersion(v.id);
+      const restored = useVault.getState().manifest!.versions.find((x) => x.id === v.id);
+      expect(restored?.deletedAt).toBeNull();
+      // Should be reassigned to mainTrack because sideBranch is deleted
+      expect(restored?.trackId).toBe(mainTrack.id);
     });
 
     it('search selector filters across tracks, labels, and notes', async () => {

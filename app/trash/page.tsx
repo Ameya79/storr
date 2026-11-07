@@ -28,7 +28,7 @@ import {
 
 export default function TrashPage() {
   const router = useRouter();
-  const { manifest, restoreVersion, purgeVersion } = useVault();
+  const { manifest, restoreVersion, purgeVersion, emptyAllTrash } = useVault();
 
   const trashVersions = useMemo(
     () => selectTrashVersions(manifest),
@@ -69,9 +69,7 @@ export default function TrashPage() {
   };
 
   const handleConfirmEmptyAll = async () => {
-    for (const v of trashVersions) {
-      await purgeVersion(v.id);
-    }
+    await emptyAllTrash();
     showToast({ type: 'info', message: 'Trash emptied' });
     setIsEmptyingAll(false);
   };

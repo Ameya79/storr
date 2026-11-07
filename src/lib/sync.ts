@@ -82,6 +82,14 @@ export function hasSemanticManifestDiff(localOrMerged: Manifest, remote: Manifes
     }
   }
 
+  const localPurged = (localOrMerged.purgedVersionIds || []).slice().sort().join(',');
+  const remotePurged = (remote.purgedVersionIds || []).slice().sort().join(',');
+  if (localPurged !== remotePurged) return true;
+
+  const localPurgedTracks = (localOrMerged.purgedTrackIds || []).slice().sort().join(',');
+  const remotePurgedTracks = (remote.purgedTrackIds || []).slice().sort().join(',');
+  if (localPurgedTracks !== remotePurgedTracks) return true;
+
   return false;
 }
 
@@ -96,15 +104,35 @@ const parseSafeTime = (dateStr?: string | null): number => {
  * Entity with the newer updatedAt wins.
  * Tracks are deduplicated by ID and normalized branch name.
  * Soft deletes (tombstones) are preserved since deletedAt updates updatedAt.
- * Tracks and versions never disappear except via explicit PURGE_VERSION.
+ * Permanently purged items (allPurgedVersionIds / allPurgedTrackIds) are strictly excluded.
  */
-export function mergeManifests(local: Manifest, remote: Manifest): Manifest {
+export function mergeManifests(
+  local: Manifest,
+  remote: Manifest,
+  pendingPurgeVersionIds: Set<string> = new Set(),
+  pendingPurgeTrackIds: Set<string> = new Set()
+): Manifest {
+  // Combine all purged IDs from local, remote, and any pending outbox purge ops
+  const allPurgedVersionIds = new Set([
+    ...(local.purgedVersionIds || []),
+    ...(remote.purgedVersionIds || []),
+    ...pendingPurgeVersionIds,
+  ]);
+
+  const allPurgedTrackIds = new Set([
+    ...(local.purgedTrackIds || []),
+    ...(remote.purgedTrackIds || []),
+    ...pendingPurgeTrackIds,
+  ]);
+
   // Merge Tracks with deduplication by ID and trimmed lowercase name
   const trackMap = new Map<string, Track>();
   const nameToId = new Map<string, string>();
 
   const insertOrMergeTrack = (track: Track) => {
     if (!track || !track.id || !track.name) return;
+    if (allPurgedTrackIds.has(track.id)) return;
+
     const normName = track.name.trim().toLowerCase();
     const existingId = trackMap.has(track.id) ? track.id : nameToId.get(normName);
 
@@ -118,13 +146,22 @@ export function mergeManifests(local: Manifest, remote: Manifest): Manifest {
     const existingTime = parseSafeTime(existing.updatedAt);
     const newTime = parseSafeTime(track.updatedAt);
 
-    if (newTime >= existingTime) {
+    if (newTime > existingTime) {
       // Keep existingId so references stay stable, but update data
       trackMap.set(existingId, {
         ...existing,
         ...track,
         id: existingId,
       });
+    } else if (newTime === existingTime) {
+      // Equal timestamps: tombstone (deletedAt) wins over non-deleted
+      if (track.deletedAt && !existing.deletedAt) {
+        trackMap.set(existingId, {
+          ...existing,
+          ...track,
+          id: existingId,
+        });
+      }
     } else if (existing.deletedAt && !track.deletedAt) {
       // Preserve existing tombstone if incoming older object lacks it
       trackMap.set(existingId, existing);
@@ -144,20 +181,29 @@ export function mergeManifests(local: Manifest, remote: Manifest): Manifest {
 
   for (const version of remote.versions || []) {
     if (!version || !version.id) continue;
+    if (allPurgedVersionIds.has(version.id)) continue;
     versionMap.set(version.id, version);
   }
 
   for (const localVersion of local.versions || []) {
     if (!localVersion || !localVersion.id) continue;
+    if (allPurgedVersionIds.has(localVersion.id)) continue;
+
     const existing = versionMap.get(localVersion.id);
     if (!existing) {
       versionMap.set(localVersion.id, localVersion);
     } else {
-      // Newer updatedAt wins
       const localTime = parseSafeTime(localVersion.updatedAt);
       const remoteTime = parseSafeTime(existing.updatedAt);
-      if (localTime >= remoteTime) {
+      if (localTime > remoteTime) {
         versionMap.set(localVersion.id, localVersion);
+      } else if (remoteTime > localTime) {
+        // Remote wins
+      } else {
+        // Equal timestamps: tombstone (deletedAt) wins over non-deleted
+        if (localVersion.deletedAt && !existing.deletedAt) {
+          versionMap.set(localVersion.id, localVersion);
+        }
       }
     }
   }
@@ -170,6 +216,8 @@ export function mergeManifests(local: Manifest, remote: Manifest): Manifest {
     updatedAt: new Date().toISOString(),
     tracks: mergedTracks,
     versions: mergedVersions,
+    purgedVersionIds: Array.from(allPurgedVersionIds),
+    purgedTrackIds: Array.from(allPurgedTrackIds),
   };
 }
 
@@ -183,12 +231,14 @@ export function purgeExpiredTrash(manifest: Manifest): {
   const now = Date.now();
   const retainedVersions: Version[] = [];
   const purgedOps: OutboxOp[] = [];
+  const newlyPurgedVersionIds: string[] = [];
 
   for (const v of manifest.versions) {
     if (v.deletedAt) {
       const deletedTime = new Date(v.deletedAt).getTime();
       if (now - deletedTime > THIRTY_DAYS_MS) {
         // Purge
+        newlyPurgedVersionIds.push(v.id);
         purgedOps.push({ type: 'PURGE_VERSION', versionId: v.id });
         purgedOps.push({ type: 'DELETE_BLOB', path: v.filePath });
         if (v.thumbPath) {
@@ -201,21 +251,28 @@ export function purgeExpiredTrash(manifest: Manifest): {
   }
 
   const retainedTracks: Track[] = [];
-  let tracksPurged = false;
+  const newlyPurgedTrackIds: string[] = [];
   for (const t of manifest.tracks) {
     if (t.deletedAt) {
       const deletedTime = new Date(t.deletedAt).getTime();
       if (now - deletedTime > THIRTY_DAYS_MS) {
-        tracksPurged = true;
+        newlyPurgedTrackIds.push(t.id);
         continue;
       }
     }
     retainedTracks.push(t);
   }
 
-  if (purgedOps.length === 0 && !tracksPurged) {
+  if (purgedOps.length === 0 && newlyPurgedTrackIds.length === 0) {
     return { manifest, purgedOps: [] };
   }
+
+  const nextPurgedVersions = Array.from(
+    new Set([...(manifest.purgedVersionIds || []), ...newlyPurgedVersionIds])
+  );
+  const nextPurgedTracks = Array.from(
+    new Set([...(manifest.purgedTrackIds || []), ...newlyPurgedTrackIds])
+  );
 
   return {
     manifest: {
@@ -223,6 +280,8 @@ export function purgeExpiredTrash(manifest: Manifest): {
       updatedAt: new Date().toISOString(),
       tracks: retainedTracks,
       versions: retainedVersions,
+      purgedVersionIds: nextPurgedVersions,
+      purgedTrackIds: nextPurgedTracks,
     },
     purgedOps,
   };
@@ -265,6 +324,15 @@ export async function sync(options: { silent?: boolean } = {}): Promise<void> {
       currentOutbox.push(...purgeResult.purgedOps);
     }
 
+    // Extract pending purge IDs from current outbox to protect against resurrection
+    const pendingPurgeVersionIds = new Set<string>();
+    const pendingPurgeTrackIds = new Set<string>();
+    for (const op of currentOutbox) {
+      if (op.type === 'PURGE_VERSION') {
+        pendingPurgeVersionIds.add(op.versionId);
+      }
+    }
+
     // 2. Step 1: Pull remote manifest & merge
     let remoteRes = await getManifest();
     let mergedManifest: Manifest;
@@ -280,7 +348,12 @@ export async function sync(options: { silent?: boolean } = {}): Promise<void> {
     } else {
       currentRemoteSha = remoteRes.sha;
       if (remoteRes.sha !== localSha || currentOutbox.length > 0) {
-        mergedManifest = mergeManifests(localManifest, remoteRes.manifest);
+        mergedManifest = mergeManifests(
+          localManifest,
+          remoteRes.manifest,
+          pendingPurgeVersionIds,
+          pendingPurgeTrackIds
+        );
       } else {
         mergedManifest = localManifest;
       }
@@ -345,7 +418,12 @@ export async function sync(options: { silent?: boolean } = {}): Promise<void> {
             const rePull = await getManifest();
             if (rePull) {
               currentRemoteSha = rePull.sha;
-              mergedManifest = mergeManifests(mergedManifest, rePull.manifest);
+              mergedManifest = mergeManifests(
+                mergedManifest,
+                rePull.manifest,
+                pendingPurgeVersionIds,
+                pendingPurgeTrackIds
+              );
             }
             continue;
           }
@@ -372,6 +450,14 @@ export async function sync(options: { silent?: boolean } = {}): Promise<void> {
       }
     }
 
+    // Clean up local blob cache for any versions recorded as purged
+    if (mergedManifest.purgedVersionIds && mergedManifest.purgedVersionIds.length > 0) {
+      for (const purgedId of mergedManifest.purgedVersionIds) {
+        deleteCachedBlob(`files/${purgedId}.pdf`).catch(() => {});
+        deleteCachedBlob(`thumbs/${purgedId}.webp`).catch(() => {});
+      }
+    }
+
     // 6. Step 5: Finalize state
     const nowIso = new Date().toISOString();
     await Promise.all([
@@ -380,17 +466,23 @@ export async function sync(options: { silent?: boolean } = {}): Promise<void> {
       setLastSyncAt(nowIso),
     ]);
 
-    // Filter out finished ops
-    const remainingOps = currentOutbox.filter(
-      (op) =>
-        !completedUploadOps.has(op) &&
-        !completedDeleteOps.has(op) &&
-        op.type !== 'UPSERT_TRACK' &&
-        op.type !== 'UPSERT_VERSION' &&
-        op.type !== 'SOFT_DELETE_VERSION' &&
-        op.type !== 'RESTORE_VERSION' &&
-        op.type !== 'PURGE_VERSION'
-    );
+    // Build the set of ops that were completed during this sync run
+    const completedOpsSet = new Set<OutboxOp>([
+      ...completedUploadOps,
+      ...completedDeleteOps,
+      ...currentOutbox.filter(
+        (op) =>
+          op.type === 'UPSERT_TRACK' ||
+          op.type === 'UPSERT_VERSION' ||
+          op.type === 'SOFT_DELETE_VERSION' ||
+          op.type === 'RESTORE_VERSION' ||
+          op.type === 'PURGE_VERSION'
+      ),
+    ]);
+
+    // Preserve any mutations added to the store while this sync network request was executing
+    const latestOutbox = useVault.getState().outbox;
+    const remainingOps = latestOutbox.filter((op) => !completedOpsSet.has(op));
 
     await setCachedOutbox(remainingOps);
 

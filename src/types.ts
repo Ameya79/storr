@@ -43,6 +43,8 @@ export interface Manifest {
   updatedAt: ISOTime;
   tracks: Branch[];
   versions: Version[];
+  purgedVersionIds?: string[];
+  purgedTrackIds?: string[];
 }
 
 export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'error' | 'authError';
