@@ -125,6 +125,10 @@ export const useVault = create<VaultState>((set, get) => ({
       ]);
 
       const initialManifest = manifest || createDefaultManifest();
+      if (initialManifest.purgedVersionIds && initialManifest.purgedVersionIds.length > 0) {
+        const purgedSet = new Set(initialManifest.purgedVersionIds);
+        initialManifest.versions = initialManifest.versions.filter((v) => !purgedSet.has(v.id));
+      }
       const initialBranch = initialManifest.tracks[0]?.id || null;
 
       set({
@@ -608,7 +612,10 @@ export const selectOrderedBranches = selectOrderedTracks;
 
 export function selectVersionsByTrack(manifest: Manifest | null, branchId: string): Version[] {
   if (!manifest) return [];
-  const versions = manifest.versions.filter((v) => !v.deletedAt && v.trackId === branchId);
+  const purgedSet = new Set(manifest.purgedVersionIds || []);
+  const versions = manifest.versions.filter(
+    (v) => !v.deletedAt && v.trackId === branchId && !purgedSet.has(v.id)
+  );
   return versions.sort(compareVersionsDesc);
 }
 
@@ -624,7 +631,10 @@ export const selectLatestByBranch = selectLatestByTrack;
 
 export function selectTrashVersions(manifest: Manifest | null): Version[] {
   if (!manifest) return [];
-  const trash = manifest.versions.filter((v) => v.deletedAt !== null);
+  const purgedSet = new Set(manifest.purgedVersionIds || []);
+  const trash = manifest.versions.filter(
+    (v) => v.deletedAt !== null && !purgedSet.has(v.id)
+  );
   return trash.sort((a, b) => (b.deletedAt || '').localeCompare(a.deletedAt || ''));
 }
 

@@ -45,6 +45,8 @@ export default function TrashPage() {
 
   const [versionToPurge, setVersionToPurge] = useState<Version | null>(null);
   const [isEmptyingAll, setIsEmptyingAll] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
+  const [isPurgingAll, setIsPurgingAll] = useState(false);
 
   const calculateDaysRemaining = (deletedAt: string | null) => {
     if (!deletedAt) return 30;
@@ -61,17 +63,29 @@ export default function TrashPage() {
   };
 
   const handleConfirmPurge = async () => {
-    if (versionToPurge) {
-      await purgeVersion(versionToPurge.id);
-      showToast({ type: 'info', message: 'Permanently deleted' });
-      setVersionToPurge(null);
+    if (versionToPurge && !isPurging) {
+      setIsPurging(true);
+      try {
+        await purgeVersion(versionToPurge.id);
+        showToast({ type: 'info', message: 'Permanently deleted' });
+      } finally {
+        setIsPurging(false);
+        setVersionToPurge(null);
+      }
     }
   };
 
   const handleConfirmEmptyAll = async () => {
-    await emptyAllTrash();
-    showToast({ type: 'info', message: 'Trash emptied' });
-    setIsEmptyingAll(false);
+    if (!isPurgingAll) {
+      setIsPurgingAll(true);
+      try {
+        await emptyAllTrash();
+        showToast({ type: 'info', message: 'Trash emptied' });
+      } finally {
+        setIsPurgingAll(false);
+        setIsEmptyingAll(false);
+      }
+    }
   };
 
   return (
@@ -194,17 +208,26 @@ export default function TrashPage() {
           <div className="flex gap-2 pt-2">
             <button
               type="button"
+              disabled={isPurging}
               onClick={() => setVersionToPurge(null)}
-              className="flex-1 py-2.5 px-4 rounded-xl border border-zinc-200 text-xs font-mono font-medium hover:bg-zinc-50"
+              className="flex-1 py-2.5 px-4 rounded-xl border border-zinc-200 text-xs font-mono font-medium hover:bg-zinc-50 disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="button"
+              disabled={isPurging}
               onClick={handleConfirmPurge}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium hover:bg-zinc-800"
+              className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
-              Yes, Purge Forever
+              {isPurging ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Purging…</span>
+                </>
+              ) : (
+                <span>Yes, Purge Forever</span>
+              )}
             </button>
           </div>
         </div>
@@ -213,7 +236,7 @@ export default function TrashPage() {
       {/* Empty All Trash Confirmation Sheet */}
       <AnimatedBottomSheet
         isOpen={isEmptyingAll}
-        onClose={() => setIsEmptyingAll(false)}
+        onClose={() => !isPurgingAll && setIsEmptyingAll(false)}
         title="Empty All Trash?"
       >
         <div className="space-y-4 pt-1 text-xs font-mono">
@@ -223,17 +246,26 @@ export default function TrashPage() {
           <div className="flex gap-2 pt-2">
             <button
               type="button"
+              disabled={isPurgingAll}
               onClick={() => setIsEmptyingAll(false)}
-              className="flex-1 py-2.5 px-4 rounded-xl border border-zinc-200 text-xs font-mono font-medium hover:bg-zinc-50"
+              className="flex-1 py-2.5 px-4 rounded-xl border border-zinc-200 text-xs font-mono font-medium hover:bg-zinc-50 disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="button"
+              disabled={isPurgingAll}
               onClick={handleConfirmEmptyAll}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium hover:bg-zinc-800"
+              className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
-              Yes, Empty Trash
+              {isPurgingAll ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Emptying…</span>
+                </>
+              ) : (
+                <span>Yes, Empty Trash</span>
+              )}
             </button>
           </div>
         </div>

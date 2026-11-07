@@ -129,6 +129,18 @@ globs: ["**/*.tsx", "**/*.ts", "**/*.css"]
 - **In-Flight Outbox Preservation**:
   - `sync()` finalization must only remove operations completed during the active sync cycle, preserving any newly queued user actions that arrived while the network request was in flight.
 
+## 13. Dual-Remote Parity & Defense-in-Depth State Sanitization
+- **Dual-Remote Parity**:
+  - Whenever an application codebase has multiple git remotes (e.g. `origin` targeting the user's primary/deployed repo and `storr-public` targeting the open-source mirror), all production fixes MUST be synchronized to both remotes.
+  - Never push fixes exclusively to an open-source mirror while leaving the primary deployed repository on stale code.
+- **Data File Preservation During Code Merges**:
+  - When updating branches that also serve as private GitHub storage repositories, never clobber or remove live storage directories (`files/` and `thumbs/`) or overwrite active manifest data.
+- **Defense-in-Depth Selector Filtering**:
+  - All store selectors (`selectTrashVersions`, `selectVersionsByTrack`, `selectBranchVersions`) must explicitly filter against `manifest.purgedVersionIds` to guarantee that purged items are excluded from rendering even if stale records temporarily linger in local cache.
+- **UI Confirmation Busy Locking**:
+  - All destructive modal or bottom sheet confirmation triggers (e.g. "Yes, Purge Forever", "Yes, Empty Trash") must implement busy/loading state locking (`isPurging`, `isPurgingAll`) to disable buttons and prevent double-clicks during debounced synchronization.
+
+
 
 
 
