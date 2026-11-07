@@ -110,6 +110,21 @@ globs: ["**/*.tsx", "**/*.ts", "**/*.css"]
   - Background periodic syncs (60s timer and tab visibility change) must fail silently with exponential backoff and status dot updates.
   - User-facing error toasts (`Sync failed`) must be reserved for user-initiated actions (uploads, deletes, manual retry) where the user expects immediate feedback.
 
+## 12. System Hardening, Memory Lifecycle & Security Invariants
+- **PDF.js Memory Lifecycle**:
+  - Any initialization of `pdfjs.getDocument()` (e.g. in thumbnail generation or document rendering) MUST invoke `pdf.destroy()` or `loadingTask.destroy()` inside a `finally` block.
+  - Never retain uncollected WebAssembly or Canvas contexts in memory, as mobile devices will crash under multi-file stress.
+- **Defensive Manifest & Date Parsing**:
+  - Never assume `manifest.json` received over the wire is well-formed. Guard all `JSON.parse` operations against syntax errors.
+  - All date comparisons and sorting functions (`compareVersionsDesc`, `mergeManifests`) must handle null, undefined, or malformed date strings defensively without throwing `TypeError`.
+- **Path Sanitization & Traversal Prevention**:
+  - All file paths passed to GitHub API or local caches must strip leading slashes and prevent directory traversal (`..`).
+- **Semantic Diff Completeness**:
+  - `hasSemanticManifestDiff()` must compare all mutable fields, including `tags`, `thumbPath`, `deletedAt`, and `order`. Never omit tags or secondary attributes from diff evaluation.
+- **Zustand Synchronous State Commit**:
+  - Store mutations (`addBranch`, `addVersion`) must commit state synchronously to Zustand before awaiting asynchronous cache operations (such as IndexedDB writes) to prevent parallel mutation race conditions.
+
+
 
 
 

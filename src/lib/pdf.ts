@@ -24,54 +24,71 @@ export async function makeThumbnail(file: Blob): Promise<Blob> {
   const pdfjs = await getPdfJs();
   const arrayBuffer = await file.arrayBuffer();
   const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
-  const pdf = await loadingTask.promise;
-  const page = await pdf.getPage(1);
+  let pdf: any = null;
 
-  const TARGET_WIDTH = 480;
-  const unscaledViewport = page.getViewport({ scale: 1.0 });
-  const scale = TARGET_WIDTH / unscaledViewport.width;
-  const viewport = page.getViewport({ scale });
+  try {
+    pdf = await loadingTask.promise;
+    const page = await pdf.getPage(1);
 
-  const canvas = document.createElement('canvas');
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  const ctx = canvas.getContext('2d');
+    const TARGET_WIDTH = 480;
+    const unscaledViewport = page.getViewport({ scale: 1.0 });
+    const scale = TARGET_WIDTH / unscaledViewport.width;
+    const viewport = page.getViewport({ scale });
 
-  if (!ctx) {
-    throw new Error('Canvas 2D context not available');
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      throw new Error('Canvas 2D context not available');
+    }
+
+    // Draw white background for transparent PDF pages
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    await page.render({
+      canvasContext: ctx,
+      viewport,
+    }).promise;
+
+    // Export as WebP quality 0.82 with JPEG fallback
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            // Fallback to JPEG
+            canvas.toBlob(
+              (jpegBlob) => {
+                if (jpegBlob) resolve(jpegBlob);
+                else reject(new Error('Failed to encode canvas to blob'));
+              },
+              'image/jpeg',
+              0.82
+            );
+          }
+        },
+        'image/webp',
+        0.82
+      );
+    });
+  } finally {
+    if (pdf) {
+      try {
+        pdf.destroy();
+      } catch {
+        // ignore
+      }
+    }
+    try {
+      loadingTask.destroy();
+    } catch {
+      // ignore
+    }
   }
-
-  // Draw white background for transparent PDF pages
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  await page.render({
-    canvasContext: ctx,
-    viewport,
-  }).promise;
-
-  // Export as WebP quality 0.82 with JPEG fallback
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          // Fallback to JPEG
-          canvas.toBlob(
-            (jpegBlob) => {
-              if (jpegBlob) resolve(jpegBlob);
-              else reject(new Error('Failed to encode canvas to blob'));
-            },
-            'image/jpeg',
-            0.82
-          );
-        }
-      },
-      'image/webp',
-      0.82
-    );
-  });
 }
 
 /**

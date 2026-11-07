@@ -33,10 +33,14 @@ export function formatVersionDate(dateStr: ISODate): string {
  * Secondary: createdAt descending (tie-breaker)
  */
 export function compareVersionsDesc(a: Version, b: Version): number {
-  if (a.versionDate !== b.versionDate) {
-    return b.versionDate.localeCompare(a.versionDate);
+  const dateA = a?.versionDate || '';
+  const dateB = b?.versionDate || '';
+  if (dateA !== dateB) {
+    return dateB.localeCompare(dateA);
   }
-  return b.createdAt.localeCompare(a.createdAt);
+  const createdA = a?.createdAt || '';
+  const createdB = b?.createdAt || '';
+  return createdB.localeCompare(createdA);
 }
 
 /**

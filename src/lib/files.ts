@@ -79,14 +79,18 @@ export function toChunkedBase64(bytes: Uint8Array): string {
  */
 export function fromChunkedBase64(base64: string): Uint8Array {
   // Strip newlines or spaces if any
-  const sanitized = base64.replace(/\s+/g, '');
-  const binaryString = atob(sanitized);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  const sanitized = (base64 || '').replace(/\s+/g, '');
+  try {
+    const binaryString = atob(sanitized);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  } catch (err) {
+    throw new Error(`Corrupted base64 payload: ${(err as Error).message}`);
   }
-  return bytes;
 }
 
 export function createBlobFromBytes(bytes: Uint8Array, mime?: string): Blob {

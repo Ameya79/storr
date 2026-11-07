@@ -184,12 +184,18 @@ export const useVault = create<VaultState>((set, get) => ({
       tracks: [...current.tracks, newBranch],
     };
 
-    await setCachedManifest(nextManifest);
     const op: OutboxOp = { type: 'UPSERT_TRACK', track: newBranch, id: newBranch.id };
     const nextOutbox = [...get().outbox, op];
-    await setCachedOutbox(nextOutbox);
 
+    // Synchronously commit to Zustand store so concurrent callers see the updated manifest
     set({ manifest: nextManifest, outbox: nextOutbox });
+
+    // Persist to offline IndexedDB
+    await Promise.all([
+      setCachedManifest(nextManifest),
+      setCachedOutbox(nextOutbox),
+    ]);
+
     requestDebouncedSync();
     return newBranch;
   },
@@ -357,8 +363,6 @@ export const useVault = create<VaultState>((set, get) => ({
       versions: [newVersion, ...current.versions],
     };
 
-    await setCachedManifest(nextManifest);
-
     const ops: OutboxOp[] = [
       { type: 'UPLOAD_BLOB', path: newVersion.filePath, key: newVersion.filePath },
     ];
@@ -368,9 +372,16 @@ export const useVault = create<VaultState>((set, get) => ({
     ops.push({ type: 'UPSERT_VERSION', version: newVersion, id: newVersion.id });
 
     const nextOutbox = [...get().outbox, ...ops];
-    await setCachedOutbox(nextOutbox);
 
+    // Synchronously commit to Zustand store so concurrent callers see the updated manifest
     set({ manifest: nextManifest, outbox: nextOutbox });
+
+    // Persist to offline IndexedDB
+    await Promise.all([
+      setCachedManifest(nextManifest),
+      setCachedOutbox(nextOutbox),
+    ]);
+
     requestDebouncedSync();
     return newVersion;
   },

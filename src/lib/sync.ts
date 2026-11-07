@@ -75,7 +75,8 @@ export function hasSemanticManifestDiff(localOrMerged: Manifest, remote: Manifes
       v.sha256 !== rv.sha256 ||
       v.filePath !== rv.filePath ||
       (v.thumbPath || null) !== (rv.thumbPath || null) ||
-      (v.deletedAt || null) !== (rv.deletedAt || null)
+      (v.deletedAt || null) !== (rv.deletedAt || null) ||
+      (v.tags || []).slice().sort().join(',') !== (rv.tags || []).slice().sort().join(',')
     ) {
       return true;
     }
@@ -83,6 +84,12 @@ export function hasSemanticManifestDiff(localOrMerged: Manifest, remote: Manifes
 
   return false;
 }
+
+const parseSafeTime = (dateStr?: string | null): number => {
+  if (!dateStr) return 0;
+  const t = new Date(dateStr).getTime();
+  return isNaN(t) ? 0 : t;
+};
 
 /**
  * Three-way manifest merge function:
@@ -97,6 +104,7 @@ export function mergeManifests(local: Manifest, remote: Manifest): Manifest {
   const nameToId = new Map<string, string>();
 
   const insertOrMergeTrack = (track: Track) => {
+    if (!track || !track.id || !track.name) return;
     const normName = track.name.trim().toLowerCase();
     const existingId = trackMap.has(track.id) ? track.id : nameToId.get(normName);
 
@@ -107,8 +115,8 @@ export function mergeManifests(local: Manifest, remote: Manifest): Manifest {
     }
 
     const existing = trackMap.get(existingId)!;
-    const existingTime = new Date(existing.updatedAt).getTime();
-    const newTime = new Date(track.updatedAt).getTime();
+    const existingTime = parseSafeTime(existing.updatedAt);
+    const newTime = parseSafeTime(track.updatedAt);
 
     if (newTime >= existingTime) {
       // Keep existingId so references stay stable, but update data
@@ -123,29 +131,31 @@ export function mergeManifests(local: Manifest, remote: Manifest): Manifest {
     }
   };
 
-  for (const track of remote.tracks) {
+  for (const track of remote.tracks || []) {
     insertOrMergeTrack(track);
   }
 
-  for (const localTrack of local.tracks) {
+  for (const localTrack of local.tracks || []) {
     insertOrMergeTrack(localTrack);
   }
 
   // Merge Versions
   const versionMap = new Map<string, Version>();
 
-  for (const version of remote.versions) {
+  for (const version of remote.versions || []) {
+    if (!version || !version.id) continue;
     versionMap.set(version.id, version);
   }
 
-  for (const localVersion of local.versions) {
+  for (const localVersion of local.versions || []) {
+    if (!localVersion || !localVersion.id) continue;
     const existing = versionMap.get(localVersion.id);
     if (!existing) {
       versionMap.set(localVersion.id, localVersion);
     } else {
       // Newer updatedAt wins
-      const localTime = new Date(localVersion.updatedAt).getTime();
-      const remoteTime = new Date(existing.updatedAt).getTime();
+      const localTime = parseSafeTime(localVersion.updatedAt);
+      const remoteTime = parseSafeTime(existing.updatedAt);
       if (localTime >= remoteTime) {
         versionMap.set(localVersion.id, localVersion);
       }
@@ -399,7 +409,7 @@ export async function sync(options: { silent?: boolean } = {}): Promise<void> {
         message: 'GitHub token expired or invalid.',
         actionLabel: 'Settings',
         onAction: () => {
-          window.location.hash = '#/setup';
+          window.location.href = '/setup?reauth=1';
         },
       });
     } else if (err instanceof OfflineError) {

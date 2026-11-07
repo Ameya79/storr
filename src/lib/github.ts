@@ -166,6 +166,15 @@ export async function validateRepo(
   }
 }
 
+function sanitizePath(path: string): string {
+  return path
+    .trim()
+    .replace(/^(\/|\\)+/, '')
+    .split(/[\/\\]+/)
+    .filter((segment) => segment !== '..' && segment !== '.')
+    .join('/');
+}
+
 /**
  * Fetches raw file bytes from GitHub Contents API.
  */
@@ -173,9 +182,10 @@ export async function getFile(
   path: string,
   configOverride?: GithubConfig
 ): Promise<Uint8Array | null> {
+  const cleanPath = sanitizePath(path);
   const config = getActiveConfig(configOverride);
-  const separator = path.includes('?') ? '&' : '?';
-  const url = `${GITHUB_API_BASE}/repos/${config.owner}/${config.repo}/contents/${path}${separator}_ts=${Date.now()}`;
+  const separator = cleanPath.includes('?') ? '&' : '?';
+  const url = `${GITHUB_API_BASE}/repos/${config.owner}/${config.repo}/contents/${cleanPath}${separator}_ts=${Date.now()}`;
 
   const res = await requestWithRetry(url, {
     method: 'GET',
@@ -189,7 +199,7 @@ export async function getFile(
   if (res.status === 404) return null;
 
   if (!res.ok) {
-    throw new GithubApiError(`Failed to fetch file "${path}"`, res.status);
+    throw new GithubApiError(`Failed to fetch file "${cleanPath}"`, res.status);
   }
 
   const arrayBuffer = await res.arrayBuffer();
@@ -203,9 +213,10 @@ export async function getFileMetadata(
   path: string,
   configOverride?: GithubConfig
 ): Promise<{ sha: string; size: number } | null> {
+  const cleanPath = sanitizePath(path);
   const config = getActiveConfig(configOverride);
-  const separator = path.includes('?') ? '&' : '?';
-  const url = `${GITHUB_API_BASE}/repos/${config.owner}/${config.repo}/contents/${path}${separator}_ts=${Date.now()}`;
+  const separator = cleanPath.includes('?') ? '&' : '?';
+  const url = `${GITHUB_API_BASE}/repos/${config.owner}/${config.repo}/contents/${cleanPath}${separator}_ts=${Date.now()}`;
 
   const res = await requestWithRetry(url, {
     method: 'GET',
@@ -219,7 +230,7 @@ export async function getFileMetadata(
   if (res.status === 404) return null;
 
   if (!res.ok) {
-    throw new GithubApiError(`Failed to get metadata for "${path}"`, res.status);
+    throw new GithubApiError(`Failed to get metadata for "${cleanPath}"`, res.status);
   }
 
   const data = await res.json();
@@ -260,13 +271,21 @@ export async function getManifest(
   if (data.content) {
     const rawBytes = fromChunkedBase64(data.content);
     const text = new TextDecoder().decode(rawBytes);
-    manifest = JSON.parse(text);
+    try {
+      manifest = JSON.parse(text);
+    } catch (err) {
+      throw new GithubApiError(`Malformed manifest.json received: ${(err as Error).message}`, 422);
+    }
   } else {
     // Large file content via raw endpoint
     const raw = await getFile('manifest.json', configOverride);
     if (!raw) return null;
     const text = new TextDecoder().decode(raw);
-    manifest = JSON.parse(text);
+    try {
+      manifest = JSON.parse(text);
+    } catch (err) {
+      throw new GithubApiError(`Malformed manifest.json received: ${(err as Error).message}`, 422);
+    }
   }
 
   return { manifest, sha };
@@ -283,12 +302,13 @@ export async function putFile(
   options: { sha?: string; message?: string } = {},
   configOverride?: GithubConfig
 ): Promise<string> {
+  const cleanPath = sanitizePath(path);
   const config = getActiveConfig(configOverride);
-  const url = `${GITHUB_API_BASE}/repos/${config.owner}/${config.repo}/contents/${path}`;
+  const url = `${GITHUB_API_BASE}/repos/${config.owner}/${config.repo}/contents/${cleanPath}`;
   const base64 = toChunkedBase64(bytes);
 
   const body: { message: string; content: string; sha?: string } = {
-    message: options.message || `Update ${path}`,
+    message: options.message || `Update ${cleanPath}`,
     content: base64,
   };
 
@@ -310,7 +330,7 @@ export async function putFile(
   if (res.status === 409 || res.status === 422) {
     const errData = await res.json().catch(() => null);
     throw new ConflictError(
-      `Conflict while uploading ${path}: ${errData?.message || res.statusText}`,
+      `Conflict while uploading ${cleanPath}: ${errData?.message || res.statusText}`,
       res.status
     );
   }
@@ -318,7 +338,7 @@ export async function putFile(
   if (!res.ok) {
     const errData = await res.json().catch(() => null);
     throw new GithubApiError(
-      `Failed to upload ${path}: ${errData?.message || res.statusText}`,
+      `Failed to upload ${cleanPath}: ${errData?.message || res.statusText}`,
       res.status,
       errData
     );
@@ -337,8 +357,9 @@ export async function deleteFile(
   message?: string,
   configOverride?: GithubConfig
 ): Promise<void> {
+  const cleanPath = sanitizePath(path);
   const config = getActiveConfig(configOverride);
-  const url = `${GITHUB_API_BASE}/repos/${config.owner}/${config.repo}/contents/${path}`;
+  const url = `${GITHUB_API_BASE}/repos/${config.owner}/${config.repo}/contents/${cleanPath}`;
 
   const res = await requestWithRetry(url, {
     method: 'DELETE',
@@ -349,7 +370,7 @@ export async function deleteFile(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      message: message || `Delete ${path}`,
+      message: message || `Delete ${cleanPath}`,
       sha,
     }),
   });
