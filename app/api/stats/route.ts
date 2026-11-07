@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 
 // In-memory counter cache with baseline metrics
 let inMemoryStats = {
-  resumesStored: 1420,
-  vaultsActive: 380,
+  resumesStored: 51,
+  vaultsActive: 14,
 };
 
 export async function GET() {

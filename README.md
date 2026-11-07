@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/resumes%20storred-1%2C420%2B-09090b?style=flat-square" alt="Resumes Storred" />
-  <img src="https://img.shields.io/badge/active%20vaults-380%2B-18181b?style=flat-square" alt="Active Vaults" />
+  <img src="https://img.shields.io/badge/resumes%20storred-51-09090b?style=flat-square" alt="Resumes Storred" />
+  <img src="https://img.shields.io/badge/active%20vaults-14-18181b?style=flat-square" alt="Active Vaults" />
   <img src="https://img.shields.io/badge/license-MIT-71717a?style=flat-square" alt="License" />
 </p>
 

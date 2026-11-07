@@ -34,8 +34,8 @@ function SetupContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
   const [stats, setStats] = useState<{ resumesStored: number; vaultsActive: number }>({
-    resumesStored: 1420,
-    vaultsActive: 380,
+    resumesStored: 51,
+    vaultsActive: 14,
   });
 
   useEffect(() => {
@@ -153,14 +153,14 @@ function SetupContent() {
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           <span>
             <strong className="text-zinc-900 font-semibold">
-              {stats.resumesStored.toLocaleString()}+
+              {stats.resumesStored.toLocaleString()}
             </strong>{' '}
             resumes storred
           </span>
           <span className="text-zinc-300">•</span>
           <span>
             <strong className="text-zinc-900 font-semibold">
-              {stats.vaultsActive.toLocaleString()}+
+              {stats.vaultsActive.toLocaleString()}
             </strong>{' '}
             vaults
           </span>
