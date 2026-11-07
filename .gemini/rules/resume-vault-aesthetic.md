@@ -122,7 +122,13 @@ globs: ["**/*.tsx", "**/*.ts", "**/*.css"]
 - **Semantic Diff Completeness**:
   - `hasSemanticManifestDiff()` must compare all mutable fields, including `tags`, `thumbPath`, `deletedAt`, and `order`. Never omit tags or secondary attributes from diff evaluation.
 - **Zustand Synchronous State Commit**:
-  - Store mutations (`addBranch`, `addVersion`) must commit state synchronously to Zustand before awaiting asynchronous cache operations (such as IndexedDB writes) to prevent parallel mutation race conditions.
+  - All store mutations (`addBranch`, `addVersion`, `updateBranch`, `deleteBranch`, `updateVersion`, `softDeleteVersion`, `restoreVersion`, `purgeVersion`, `emptyAllTrash`) must commit state synchronously to Zustand before awaiting asynchronous cache operations (such as IndexedDB writes) to prevent parallel mutation race conditions.
+- **Purge Tombstone Registry**:
+  - Permanently purged versions and tracks must be tracked in `manifest.purgedVersionIds` and `manifest.purgedTrackIds`.
+  - `mergeManifests` must strictly exclude all purged IDs to prevent remote resurrection loops when merging manifests.
+- **In-Flight Outbox Preservation**:
+  - `sync()` finalization must only remove operations completed during the active sync cycle, preserving any newly queued user actions that arrived while the network request was in flight.
+
 
 
 
