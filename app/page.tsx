@@ -11,37 +11,39 @@ import {
   selectSearchResults,
 } from '@/store/useVault';
 import { BranchSwitcher } from '@/components/BranchSwitcher';
+import { BranchCarousel } from '@/components/BranchCarousel';
 import { HeroVersionCard } from '@/components/HeroVersionCard';
 import { BranchTreeVisualizer } from '@/components/BranchTreeVisualizer';
 import { MultiBranchTreeGraph } from '@/components/MultiBranchTreeGraph';
 import { CreateBranchModal } from '@/components/BranchModal';
 import { BranchBadge } from '@/components/BranchBadge';
 import { ProfileLinksBar } from '@/components/ProfileLinksBar';
+import { ApplicationsPipeline } from '@/components/ApplicationsPipeline';
 import {
   GitBranchIcon,
   PaperResumeIcon,
   ClockHistoryIcon,
 } from '@/components/SvgIcons';
-import { Search, Plus, ArrowRight, X, LayoutGrid } from 'lucide-react';
+import { Search, Plus, ArrowRight, X, LayoutGrid, Briefcase } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function HomePage() {
   const { manifest, isHydrated, activeBranchId, setActiveBranchId } = useVault();
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'tree' | 'focus'>('tree');
+  const [viewMode, setViewMode] = useState<'tree' | 'focus' | 'tracker'>('tree');
   const [isCreateBranchOpen, setIsCreateBranchOpen] = useState(false);
 
   // Restore view mode preference from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem('rv.viewMode');
-      if (saved === 'tree' || saved === 'focus') {
+      if (saved === 'tree' || saved === 'focus' || saved === 'tracker') {
         setViewMode(saved);
       }
     } catch {}
   }, []);
 
-  const handleToggleView = (mode: 'tree' | 'focus') => {
+  const handleToggleView = (mode: 'tree' | 'focus' | 'tracker') => {
     setViewMode(mode);
     try {
       localStorage.setItem('rv.viewMode', mode);
@@ -152,27 +154,52 @@ export default function HomePage() {
               type="button"
               onClick={() => handleToggleView('tree')}
               className={clsx(
-                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 min-h-[36px]',
+                'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 min-h-[36px]',
                 viewMode === 'tree'
                   ? 'bg-white text-zinc-950 shadow-xs font-semibold'
                   : 'text-zinc-500 hover:text-zinc-900'
               )}
             >
               <GitBranchIcon size={13} />
-              <span>Tree View</span>
+              <span>Tree</span>
             </button>
             <button
               type="button"
               onClick={() => handleToggleView('focus')}
               className={clsx(
-                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 min-h-[36px]',
+                'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 min-h-[36px]',
                 viewMode === 'focus'
                   ? 'bg-white text-zinc-950 shadow-xs font-semibold'
                   : 'text-zinc-500 hover:text-zinc-900'
               )}
             >
               <PaperResumeIcon size={13} />
-              <span>Focused View</span>
+              <span>Focused</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggleView('tracker')}
+              className={clsx(
+                'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 min-h-[36px]',
+                viewMode === 'tracker'
+                  ? 'bg-white text-zinc-950 shadow-xs font-semibold'
+                  : 'text-zinc-500 hover:text-zinc-900'
+              )}
+            >
+              <Briefcase size={13} />
+              <span>Tracker</span>
+              {manifest?.applications && manifest.applications.length > 0 && (
+                <span
+                  className={clsx(
+                    'text-[10px] px-1 rounded font-mono',
+                    viewMode === 'tracker'
+                      ? 'bg-zinc-800 text-zinc-200'
+                      : 'bg-zinc-200 text-zinc-700'
+                  )}
+                >
+                  {manifest.applications.length}
+                </span>
+              )}
             </button>
           </div>
 
@@ -248,19 +275,32 @@ export default function HomePage() {
         <div className="space-y-4">
           <MultiBranchTreeGraph />
         </div>
+      ) : viewMode === 'tracker' ? (
+        /* Job Application Tracker View */
+        <div className="space-y-4">
+          <ApplicationsPipeline />
+        </div>
       ) : (
         /* Focused Single Branch View */
         <div className="space-y-6">
           {/* Branch Switcher & Quick Meta */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <BranchSwitcher />
+          <div className="space-y-3">
+            {/* Mobile 1-Tap Branch Carousel */}
+            <div className="block sm:hidden">
+              <BranchCarousel onOpenCreateBranch={() => setIsCreateBranchOpen(true)} />
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
-              <span>{branches.length} branches</span>
-              <span>•</span>
-              <span>{totalResumes} {totalResumes === 1 ? 'resume' : 'resumes'}</span>
+            {/* Desktop Switcher + Branch Count */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="hidden sm:flex items-center gap-2">
+                <BranchSwitcher />
+              </div>
+
+              <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
+                <span>{branches.length} branches</span>
+                <span>•</span>
+                <span>{totalResumes} {totalResumes === 1 ? 'resume' : 'resumes'}</span>
+              </div>
             </div>
           </div>
 

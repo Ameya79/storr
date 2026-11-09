@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { Version, Branch } from '@/types';
 import { formatVersionDate } from '@/lib/dates';
 import { PaperResumeIcon, EyeIcon } from '@/components/SvgIcons';
+import { useVault, selectApplicationsByVersion } from '@/store/useVault';
+import { Briefcase } from 'lucide-react';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
 
@@ -22,6 +24,7 @@ export function BranchTreeVisualizer({
   onSelectVersion,
 }: BranchTreeVisualizerProps) {
   const router = useRouter();
+  const { manifest } = useVault();
   const effectiveLatestId =
     latestVersionId !== undefined ? latestVersionId : versions[0]?.id || null;
 
@@ -109,6 +112,12 @@ export function BranchTreeVisualizer({
                     {isLatest && (
                       <span className="font-mono text-[9px] font-bold uppercase tracking-wider bg-zinc-950 text-white px-1.5 py-0.2 rounded">
                         HEAD
+                      </span>
+                    )}
+                    {selectApplicationsByVersion(manifest, version.id).length > 0 && (
+                      <span className="inline-flex items-center gap-1 font-mono text-[9px] font-bold bg-zinc-100 text-zinc-700 px-1.5 py-0.2 rounded border border-zinc-200">
+                        <Briefcase size={9} />
+                        <span>{selectApplicationsByVersion(manifest, version.id).length}</span>
                       </span>
                     )}
                   </div>

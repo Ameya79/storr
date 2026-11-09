@@ -169,6 +169,20 @@ globs: ["**/*.tsx", "**/*.ts", "**/*.css"]
   - Links remain permanently stored until explicitly deleted or updated by the user.
   - Fast one-click copy capability to accelerate job application form completion.
 
+## 16. Mobile Phone Ergonomics & First-Class Tracking Invariants
+- **First-Class Navigation Prominence**:
+  - The Job Application Tracker must be accessible directly from the primary navigation (mobile floating dock and desktop left rail) with real-time active application counter badges.
+  - Never bury core workflow features inside secondary deep-links or leaf pages alone.
+- **Mobile Thumbnail Aspect-Ratio Scaling**:
+  - In card layouts (e.g. `HeroVersionCard`), never render oversized full-width preview rectangles on mobile devices.
+  - Use compact, high-density media cards where a document aspect-ratio thumbnail (`w-20 h-28` to `w-24 h-32`) sits side-by-side with metadata and action chips.
+- **Touch-Friendly Branch Carousel in Focused View**:
+  - In Focused View on mobile, replace nested dropdown menus with a touch-swipeable horizontal branch carousel showing color indicators and commit counts. Switching active branches must be a 1-tap operation.
+- **Strict Touch Target Ergonomics**:
+  - All interactive buttons, tabs, dropdown items, and icon controls on mobile must meet or exceed minimum $44\text{px}$ touch dimensions (`min-h-[44px]` or `min-w-[44px]`).
+- **No-Emoji Invariant Maintenance**:
+  - Status badges, pipeline chips, and company records must continue to use crisp monochrome typography and subtle colored status dots (`w-2 h-2 rounded-full`) without emojis.
+
 
 
 

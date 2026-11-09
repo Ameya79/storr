@@ -20,8 +20,8 @@ import {
   GitCommitIcon,
 } from '@/components/SvgIcons';
 import { Skeleton } from '@/src/components/Skeleton';
-import { Plus, MoreVertical, Trash2 } from 'lucide-react';
-import { useVault } from '@/store/useVault';
+import { Plus, MoreVertical, Trash2, Briefcase } from 'lucide-react';
+import { useVault, selectApplicationsByVersion } from '@/store/useVault';
 import clsx from 'clsx';
 
 interface HeroVersionCardProps {
@@ -42,8 +42,9 @@ export function HeroVersionCard({
   onView,
 }: HeroVersionCardProps) {
   const router = useRouter();
-  const { softDeleteVersion } = useVault();
+  const { manifest, softDeleteVersion } = useVault();
   const commitCount = totalCommits ?? totalBranchVersions ?? 0;
+  const applications = version ? selectApplicationsByVersion(manifest, version.id) : [];
 
   const { url: thumbUrl, isLoading: isThumbLoading } = useBlobUrl(
     version?.thumbPath || null
@@ -134,11 +135,11 @@ export function HeroVersionCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', damping: 25, stiffness: 300 }}
       onClick={handleOpenView}
-      className="group cursor-pointer bg-white rounded-2xl border border-zinc-200/90 shadow-subtle hover:shadow-card hover:border-zinc-300 transition-all p-5 sm:p-6"
+      className="group cursor-pointer bg-white rounded-2xl border border-zinc-200/90 shadow-subtle hover:shadow-card hover:border-zinc-300 transition-all p-4 sm:p-5"
     >
-      <div className="flex flex-col md:flex-row gap-5 items-start">
-        {/* Document Thumbnail with crisp border */}
-        <div className="w-full md:w-36 h-48 md:h-44 rounded-xl border border-zinc-200 bg-zinc-50 overflow-hidden flex-shrink-0 relative flex items-center justify-center shadow-xs">
+      <div className="flex gap-4 sm:gap-5 items-start">
+        {/* Document Thumbnail: Sleek compact aspect ratio on mobile, comfortable on desktop */}
+        <div className="w-20 h-28 sm:w-36 sm:h-48 rounded-xl border border-zinc-200 bg-zinc-50 overflow-hidden flex-shrink-0 relative flex items-center justify-center shadow-xs">
           {isThumbLoading ? (
             <Skeleton className="w-full h-full" />
           ) : thumbUrl ? (
@@ -148,33 +149,33 @@ export function HeroVersionCard({
               className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-102"
             />
           ) : (
-            <div className="flex flex-col items-center justify-center text-zinc-400 gap-1.5 p-4">
-              <PaperResumeIcon size={32} />
-              <span className="font-mono text-[10px] uppercase font-bold tracking-wider text-zinc-500">
-                {isPdf ? 'PDF Document' : 'DOCX Document'}
+            <div className="flex flex-col items-center justify-center text-zinc-400 gap-1 p-2 text-center">
+              <PaperResumeIcon size={24} />
+              <span className="font-mono text-[9px] uppercase font-bold tracking-wider text-zinc-500">
+                {isPdf ? 'PDF' : 'DOCX'}
               </span>
             </div>
           )}
 
           {/* HEAD tag badge */}
-          <div className="absolute top-2 left-2 bg-zinc-950/90 backdrop-blur-xs text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded shadow-xs">
+          <div className="absolute top-1.5 left-1.5 bg-zinc-950/90 backdrop-blur-xs text-white text-[9px] font-mono font-bold px-1.5 py-0.2 rounded shadow-xs">
             HEAD
           </div>
         </div>
 
         {/* Content & Metadata */}
-        <div className="flex-1 min-w-0 flex flex-col justify-between h-full w-full">
+        <div className="flex-1 min-w-0 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="flex items-center gap-1.5">
                 <span
                   style={{ backgroundColor: branch.color }}
-                  className="w-2.5 h-2.5 rounded-full"
+                  className="w-2 h-2 rounded-full"
                 />
-                <span className="font-mono text-xs font-semibold text-zinc-900">
+                <span className="font-mono text-xs font-semibold text-zinc-900 truncate max-w-[120px] sm:max-w-none">
                   {branch.name}
                 </span>
-                <span className="text-[11px] font-mono text-zinc-400">
+                <span className="text-[10px] font-mono text-zinc-400">
                   • {commitCount} {commitCount === 1 ? 'commit' : 'commits'}
                 </span>
               </div>
@@ -188,70 +189,89 @@ export function HeroVersionCard({
                   }}
                   className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
                 >
-                  <MoreVertical size={16} />
+                  <MoreVertical size={15} />
                 </button>
               )}
             </div>
 
-            <h2 className="text-base sm:text-lg font-bold text-zinc-950 tracking-tight leading-snug group-hover:text-zinc-700 transition-colors truncate">
+            <h2 className="text-sm sm:text-base font-bold text-zinc-950 tracking-tight leading-snug group-hover:text-zinc-700 transition-colors truncate">
               {version.label}
             </h2>
 
-            <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] font-mono text-zinc-500">
+            <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px] sm:text-[11px] font-mono text-zinc-400">
               <span>{formatVersionDate(version.versionDate)}</span>
               <span>•</span>
               <span>{formatFileSize(version.sizeBytes)}</span>
               <span>•</span>
-              <span className="uppercase font-bold">{isPdf ? 'PDF' : 'DOCX'}</span>
+              <span className="uppercase font-semibold">{isPdf ? 'PDF' : 'DOCX'}</span>
+            </div>
+
+            {/* Application Tracking Badge on Card */}
+            <div className="mt-2.5">
+              <Link
+                href={`/view/${version.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 border border-zinc-200/80 text-zinc-800 text-[11px] font-mono font-medium transition-colors"
+              >
+                <Briefcase size={12} className="text-zinc-600" />
+                <span>
+                  {applications.length > 0
+                    ? `${applications.length} ${applications.length === 1 ? 'Application' : 'Applications'}`
+                    : '+ Track Application'}
+                </span>
+              </Link>
             </div>
 
             {version.note && (
-              <p className="text-xs font-mono text-zinc-600 bg-zinc-50 border border-zinc-100 p-2.5 rounded-lg mt-3 line-clamp-2 leading-relaxed">
+              <p className="text-[11px] font-mono text-zinc-600 bg-zinc-50 border border-zinc-100 p-2 rounded-lg mt-2.5 line-clamp-2 leading-relaxed">
                 {version.note}
               </p>
             )}
           </div>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 border-t border-zinc-100 mt-4">
-            <button
-              type="button"
-              onClick={handleOpenView}
-              className="inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium shadow-xs hover:bg-zinc-800 active:scale-98 transition-all min-h-[40px]"
-            >
-              <EyeIcon size={14} />
-              <span>View</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleShare}
-              className="inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-white border border-zinc-200 text-zinc-800 text-xs font-mono font-medium hover:bg-zinc-50 hover:border-zinc-300 active:scale-98 transition-all min-h-[40px]"
-            >
-              <ShareIcon size={14} className="text-zinc-600" />
-              <span>Share</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDownload}
-              className="inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-white border border-zinc-200 text-zinc-800 text-xs font-mono font-medium hover:bg-zinc-50 hover:border-zinc-300 active:scale-98 transition-all min-h-[40px]"
-            >
-              <DownloadIcon size={14} className="text-zinc-600" />
-              <span>Download</span>
-            </button>
-            <button
-              type="button"
-              onClick={async (e) => {
-                e.stopPropagation();
-                await softDeleteVersion(version.id);
-                showToast({ type: 'info', message: `"${version.label}" moved to Trash` });
-              }}
-              className="inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-white border border-red-200 text-red-600 text-xs font-mono font-medium hover:bg-red-50 hover:border-red-300 active:scale-98 transition-all min-h-[40px]"
-            >
-              <Trash2 size={14} />
-              <span>Delete</span>
-            </button>
-          </div>
         </div>
+      </div>
+
+      {/* Action Buttons: 44px touch targets on mobile */}
+      <div className="grid grid-cols-4 gap-2 pt-3 border-t border-zinc-100 mt-3">
+        <button
+          type="button"
+          onClick={handleOpenView}
+          className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium shadow-xs hover:bg-zinc-800 active:scale-98 transition-all min-h-[44px]"
+        >
+          <EyeIcon size={14} />
+          <span>View</span>
+        </button>
+        <button
+          type="button"
+          onClick={handleShare}
+          className="inline-flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-white border border-zinc-200 text-zinc-800 text-xs font-mono font-medium hover:bg-zinc-50 hover:border-zinc-300 active:scale-98 transition-all min-h-[44px]"
+          title="Share file"
+        >
+          <ShareIcon size={14} className="text-zinc-600" />
+          <span className="hidden sm:inline">Share</span>
+        </button>
+        <button
+          type="button"
+          onClick={handleDownload}
+          className="inline-flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-white border border-zinc-200 text-zinc-800 text-xs font-mono font-medium hover:bg-zinc-50 hover:border-zinc-300 active:scale-98 transition-all min-h-[44px]"
+          title="Download file"
+        >
+          <DownloadIcon size={14} className="text-zinc-600" />
+          <span className="hidden sm:inline">Download</span>
+        </button>
+        <button
+          type="button"
+          onClick={async (e) => {
+            e.stopPropagation();
+            await softDeleteVersion(version.id);
+            showToast({ type: 'info', message: `"${version.label}" moved to Trash` });
+          }}
+          className="inline-flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-white border border-red-200 text-red-600 text-xs font-mono font-medium hover:bg-red-50 hover:border-red-300 active:scale-98 transition-all min-h-[44px]"
+          title="Delete resume"
+        >
+          <Trash2 size={14} />
+          <span className="hidden sm:inline">Delete</span>
+        </button>
       </div>
     </motion.div>
   );
