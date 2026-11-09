@@ -48,6 +48,8 @@ export function BranchTreeVisualizer({
         const isLatest = version.id === effectiveLatestId;
         const isFirst = index === 0;
         const isLast = index === versions.length - 1;
+        const apps = selectApplicationsByVersion(manifest, version.id);
+        const latestApp = apps[0] || null;
 
         return (
           <motion.div
@@ -105,7 +107,7 @@ export function BranchTreeVisualizer({
                   <PaperResumeIcon size={16} />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                     <p className="text-xs sm:text-sm font-semibold text-zinc-950 truncate">
                       {version.label}
                     </p>
@@ -114,10 +116,30 @@ export function BranchTreeVisualizer({
                         HEAD
                       </span>
                     )}
-                    {selectApplicationsByVersion(manifest, version.id).length > 0 && (
-                      <span className="inline-flex items-center gap-1 font-mono text-[9px] font-bold bg-zinc-100 text-zinc-700 px-1.5 py-0.2 rounded border border-zinc-200">
-                        <Briefcase size={9} />
-                        <span>{selectApplicationsByVersion(manifest, version.id).length}</span>
+                    {latestApp && (
+                      <span className="inline-flex items-center gap-1 font-mono text-[10px] bg-zinc-50 border border-zinc-200/90 px-2 py-0.5 rounded-md text-zinc-800 shadow-2xs">
+                        <Briefcase size={10} className="text-zinc-500 shrink-0" />
+                        <span className="font-bold text-zinc-950 truncate max-w-[100px] sm:max-w-[140px]">
+                          {latestApp.company}
+                        </span>
+                        <span className="text-zinc-300">•</span>
+                        <span
+                          className={clsx(
+                            'text-[9px] font-semibold capitalize',
+                            latestApp.status === 'interviewing' && 'text-blue-700',
+                            latestApp.status === 'offer' && 'text-emerald-700 font-bold',
+                            latestApp.status === 'applied' && 'text-zinc-600',
+                            latestApp.status === 'rejected' && 'text-rose-600',
+                            latestApp.status === 'ghosted' && 'text-amber-600'
+                          )}
+                        >
+                          {latestApp.status}
+                        </span>
+                        {apps.length > 1 && (
+                          <span className="text-[9px] text-zinc-400 font-medium">
+                            +{apps.length - 1}
+                          </span>
+                        )}
                       </span>
                     )}
                   </div>

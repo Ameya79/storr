@@ -3,8 +3,9 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useVault, selectAllApplications } from '@/store/useVault';
-import { Application, ApplicationStatus, Version } from '@/types';
+import { Application, ApplicationStatus, Version, Branch } from '@/types';
 import { showToast } from '@/components/ToastContainer';
+import { GitBranchIcon } from '@/components/SvgIcons';
 import {
   Briefcase,
   Plus,
@@ -14,37 +15,44 @@ import {
   Trash2,
   X,
   FileText,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const STATUS_CONFIG: Record<
   ApplicationStatus,
-  { label: string; colorDot: string; badgeClass: string }
+  { label: string; colorDot: string; barColor: string; badgeClass: string }
 > = {
   applied: {
     label: 'Applied',
-    colorDot: 'bg-zinc-500',
-    badgeClass: 'bg-zinc-100 text-zinc-700 border-zinc-200',
+    colorDot: 'bg-zinc-400',
+    barColor: 'bg-zinc-400',
+    badgeClass: 'bg-zinc-100 text-zinc-800 border-zinc-300',
   },
   interviewing: {
     label: 'Interviewing',
     colorDot: 'bg-blue-600',
-    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
+    barColor: 'bg-blue-600',
+    badgeClass: 'bg-blue-50 text-blue-800 border-blue-200',
   },
   offer: {
     label: 'Offer',
     colorDot: 'bg-emerald-600',
-    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    barColor: 'bg-emerald-600',
+    badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   },
   rejected: {
     label: 'Rejected',
-    colorDot: 'bg-rose-600',
-    badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
+    colorDot: 'bg-rose-500',
+    barColor: 'bg-rose-500',
+    badgeClass: 'bg-rose-50 text-rose-800 border-rose-200',
   },
   ghosted: {
     label: 'Ghosted',
-    colorDot: 'bg-amber-600',
-    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
+    colorDot: 'bg-amber-500',
+    barColor: 'bg-amber-500',
+    badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
   },
 };
 
@@ -61,6 +69,11 @@ export function ApplicationsPipeline() {
   const versionMap = useMemo(() => {
     return new Map(versions.map((v) => [v.id, v]));
   }, [versions]);
+
+  const branchMap = useMemo(() => {
+    if (!manifest) return new Map<string, Branch>();
+    return new Map(manifest.tracks.map((t) => [t.id, t]));
+  }, [manifest]);
 
   const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatus>('all');
   const [versionFilter, setVersionFilter] = useState<string>('all');
@@ -179,19 +192,19 @@ export function ApplicationsPipeline() {
   };
 
   return (
-    <div className="space-y-5 font-mono">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-4 font-mono">
+      {/* Header & Quick Action */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-zinc-950 text-white flex items-center justify-center flex-shrink-0 shadow-subtle">
-            <Briefcase size={16} />
+          <div className="w-8 h-8 rounded-lg bg-zinc-950 text-white flex items-center justify-center shrink-0 shadow-subtle">
+            <Briefcase size={15} />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-zinc-950 tracking-tight leading-tight">
-              Job Application Tracker
+            <h2 className="text-base font-bold text-zinc-950 tracking-tight leading-tight">
+              Application Tracker
             </h2>
             <p className="text-[11px] text-zinc-500 mt-0.5">
-              Track companies, interview stages &amp; resume version sent
+              Career pipeline tied to specific resume commits
             </p>
           </div>
         </div>
@@ -199,36 +212,47 @@ export function ApplicationsPipeline() {
         <button
           type="button"
           onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-950 text-white hover:bg-zinc-800 text-xs font-semibold shadow-xs transition-all active:scale-98 min-h-[44px]"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-950 text-white hover:bg-zinc-800 text-xs font-semibold shadow-xs transition-all active:scale-98 min-h-[44px]"
         >
-          <Plus size={15} />
+          <Plus size={14} />
           <span>Track Application</span>
         </button>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div className="p-3.5 rounded-xl bg-white border border-zinc-200 shadow-2xs">
-          <span className="text-[10px] text-zinc-400 uppercase font-semibold">Total Tracked</span>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-950 mt-1">{counts.all}</p>
+      {/* High-Density Summary Ribbon */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 text-xs">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-zinc-200 shadow-2xs shrink-0">
+          <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Total</span>
+          <span className="font-bold text-zinc-950 font-mono">{counts.all}</span>
         </div>
-        <div className="p-3.5 rounded-xl bg-blue-50/50 border border-blue-200/60 shadow-2xs">
-          <span className="text-[10px] text-blue-700 uppercase font-semibold">Interviewing</span>
-          <p className="text-xl sm:text-2xl font-bold text-blue-900 mt-1">{counts.interviewing}</p>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50/70 border border-blue-200 text-blue-900 shadow-2xs shrink-0">
+          <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+          <span className="text-[11px] font-medium">Interviewing</span>
+          <span className="font-bold font-mono ml-0.5">{counts.interviewing}</span>
         </div>
-        <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200/60 shadow-2xs">
-          <span className="text-[10px] text-emerald-700 uppercase font-semibold">Offers</span>
-          <p className="text-xl sm:text-2xl font-bold text-emerald-900 mt-1">{counts.offer}</p>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-emerald-900 shadow-2xs shrink-0">
+          <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+          <span className="text-[11px] font-medium">Offers</span>
+          <span className="font-bold font-mono ml-0.5">{counts.offer}</span>
         </div>
-        <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200/80 shadow-2xs">
-          <span className="text-[10px] text-zinc-500 uppercase font-semibold">Applied</span>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-800 mt-1">{counts.applied}</p>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-700 shadow-2xs shrink-0">
+          <span className="w-2 h-2 rounded-full bg-zinc-400 shrink-0" />
+          <span className="text-[11px] font-medium">Applied</span>
+          <span className="font-bold font-mono ml-0.5">{counts.applied}</span>
         </div>
+        {(counts.rejected > 0 || counts.ghosted > 0) && (
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-50/80 border border-zinc-200 text-zinc-500 shadow-2xs shrink-0">
+            <span className="text-[11px] font-medium">Archived</span>
+            <span className="font-mono text-zinc-700 font-bold">
+              {counts.rejected + counts.ghosted}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Filter Bar */}
+      {/* Filter Tabs & Resume Selector */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pb-1">
-        {/* Status Filters */}
+        {/* Stage Filter Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
           {(['all', 'interviewing', 'offer', 'applied', 'rejected', 'ghosted'] as const).map(
             (st) => {
@@ -244,7 +268,7 @@ export function ApplicationsPipeline() {
                   className={clsx(
                     'px-3 py-1.5 rounded-lg border text-xs font-medium transition-all flex items-center gap-1.5 shrink-0 min-h-[36px]',
                     isActive
-                      ? 'bg-zinc-950 text-white border-zinc-950 shadow-xs'
+                      ? 'bg-zinc-950 text-white border-zinc-950 shadow-xs font-semibold'
                       : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-300'
                   )}
                 >
@@ -258,7 +282,7 @@ export function ApplicationsPipeline() {
                   <span className="capitalize">{st === 'all' ? 'All' : config?.label}</span>
                   <span
                     className={clsx(
-                      'text-[10px] px-1 rounded',
+                      'text-[10px] px-1 rounded font-mono',
                       isActive ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-500'
                     )}
                   >
@@ -272,7 +296,7 @@ export function ApplicationsPipeline() {
 
         {/* Resume Version Filter Dropdown */}
         {versions.length > 1 && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <span className="text-[11px] text-zinc-400 shrink-0">Resume:</span>
             <select
               value={versionFilter}
@@ -290,28 +314,28 @@ export function ApplicationsPipeline() {
         )}
       </div>
 
-      {/* Applications List */}
+      {/* Reflog Applications Stream */}
       <div className="space-y-3">
         {filteredApps.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-zinc-200 space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-zinc-100 text-zinc-500 flex items-center justify-center mx-auto">
-              <Briefcase size={22} />
+            <div className="w-10 h-10 rounded-xl bg-zinc-100 text-zinc-500 flex items-center justify-center mx-auto">
+              <Briefcase size={18} />
             </div>
-            <h3 className="text-sm font-bold text-zinc-900">
+            <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
               {allApplications.length === 0
-                ? 'No job applications tracked yet'
-                : 'No applications match this filter'}
+                ? 'No applications tracked yet'
+                : 'No applications match filter'}
             </h3>
             <p className="text-xs text-zinc-500 max-w-sm mx-auto leading-relaxed">
               {allApplications.length === 0
-                ? 'Record applications with the specific resume version you sent, interview notes, and direct job links.'
-                : 'Try selecting a different status or resume filter above.'}
+                ? 'Log applications with company, interview stage, and the exact resume commit sent.'
+                : 'Try selecting another status tab or resume version above.'}
             </p>
             {allApplications.length === 0 && (
               <button
                 type="button"
                 onClick={openAddModal}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-950 text-white text-xs font-semibold shadow-xs hover:bg-zinc-800 transition-colors mt-2 min-h-[44px]"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-950 text-white text-xs font-semibold shadow-xs hover:bg-zinc-800 transition-colors mt-1 min-h-[44px]"
               >
                 <Plus size={14} />
                 <span>Track First Application</span>
@@ -319,22 +343,31 @@ export function ApplicationsPipeline() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <div className="space-y-2.5">
             {filteredApps.map((app) => {
               const config = STATUS_CONFIG[app.status];
               const linkedVersion = versionMap.get(app.versionId);
+              const linkedBranch = linkedVersion ? branchMap.get(linkedVersion.trackId) : null;
 
               return (
                 <div
                   key={app.id}
-                  className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-2xs hover:shadow-subtle hover:border-zinc-300 transition-all flex flex-col justify-between space-y-3.5"
+                  className="relative bg-white rounded-2xl border border-zinc-200/90 hover:border-zinc-300 shadow-2xs hover:shadow-subtle transition-all p-4 sm:p-5 flex flex-col justify-between space-y-3"
                 >
-                  <div className="space-y-2">
-                    {/* Top Row: Company & Actions */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-zinc-950 text-sm sm:text-base truncate">
+                  {/* Left colored stage accent indicator */}
+                  <div
+                    className={clsx(
+                      'absolute left-0 top-3 bottom-3 w-1 rounded-r-full',
+                      config.barColor
+                    )}
+                  />
+
+                  {/* Top Row: Company, Role & Inline Stage Control */}
+                  <div className="space-y-2 pl-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-bold text-sm sm:text-base text-zinc-950 tracking-tight leading-snug">
                             {app.company}
                           </h3>
                           {app.jobUrl && (
@@ -342,91 +375,96 @@ export function ApplicationsPipeline() {
                               href={app.jobUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-zinc-400 hover:text-zinc-950 transition-colors p-1"
+                              className="text-zinc-400 hover:text-zinc-950 p-1 rounded transition-colors"
                               title="Open Job Posting"
                             >
                               <ExternalLink size={13} />
                             </a>
                           )}
                         </div>
-                        <p className="text-xs text-zinc-700 font-medium truncate mt-0.5">
+                        <p className="text-xs text-zinc-700 font-medium mt-0.5">
                           {app.role}
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      {/* Inline Stage Dropdown + Actions */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="relative">
+                          <select
+                            value={app.status}
+                            onChange={(e) =>
+                              handleStatusChange(app, e.target.value as ApplicationStatus)
+                            }
+                            className={clsx(
+                              'appearance-none pl-2.5 pr-6 py-1 rounded-lg border text-xs font-mono font-bold cursor-pointer transition-all shadow-2xs focus:outline-none focus:ring-1 focus:ring-zinc-900 min-h-[36px]',
+                              config.badgeClass
+                            )}
+                          >
+                            <option value="applied">Applied</option>
+                            <option value="interviewing">Interviewing</option>
+                            <option value="offer">Offer</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="ghosted">Ghosted</option>
+                          </select>
+                          <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-current opacity-60 text-[10px]">
+                            ▾
+                          </div>
+                        </div>
+
                         <button
                           type="button"
                           onClick={() => openEditModal(app)}
-                          className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
-                          title="Edit"
+                          className="p-2 text-zinc-400 hover:text-zinc-950 hover:bg-zinc-100 rounded-lg transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center"
+                          title="Edit application"
                         >
                           <Edit2 size={13} />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(app.id, app.company)}
-                          className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
+                          className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center"
+                          title="Delete application"
                         >
                           <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
 
-                    {/* Meta: Applied Date & Resume Version Link */}
-                    <div className="flex items-center gap-2 text-[11px] text-zinc-500 flex-wrap">
-                      <div className="flex items-center gap-1 text-zinc-400">
-                        <Calendar size={11} />
-                        <span>{app.appliedDate}</span>
-                      </div>
-                      <span>•</span>
+                    {/* Attached Resume Commit & Metadata */}
+                    <div className="flex items-center gap-2.5 text-xs text-zinc-500 flex-wrap pt-0.5">
                       {linkedVersion ? (
                         <Link
                           href={`/view/${linkedVersion.id}`}
-                          className="inline-flex items-center gap-1 text-zinc-800 hover:text-zinc-950 hover:underline text-[11px] bg-zinc-100/80 px-2 py-0.5 rounded-md border border-zinc-200/60"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100/90 hover:bg-zinc-200/90 border border-zinc-200 text-zinc-900 text-xs font-mono transition-colors group/pill"
                         >
-                          <FileText size={10} className="text-zinc-500" />
-                          <span className="truncate max-w-[140px] sm:max-w-[200px]">
+                          <GitBranchIcon size={12} className="text-zinc-500 group-hover/pill:text-zinc-900" />
+                          <span className="font-semibold">{linkedBranch?.name || 'branch'}</span>
+                          <span className="text-zinc-400">/</span>
+                          <span className="truncate max-w-[130px] sm:max-w-[200px] font-medium">
                             {linkedVersion.label}
+                          </span>
+                          <span className="text-[10px] text-zinc-400 uppercase font-mono">
+                            {linkedVersion.fileName.endsWith('.pdf') ? 'PDF' : 'DOCX'}
                           </span>
                         </Link>
                       ) : (
-                        <span className="text-zinc-400">Archived version</span>
+                        <span className="text-zinc-400 text-xs font-mono">Archived version</span>
                       )}
+
+                      <span className="text-zinc-300">•</span>
+
+                      <div className="flex items-center gap-1 text-zinc-400 text-[11px] font-mono">
+                        <Calendar size={11} />
+                        <span>{app.appliedDate}</span>
+                      </div>
                     </div>
 
-                    {/* Notes */}
+                    {/* Notes block */}
                     {app.notes && (
-                      <p className="text-[11px] text-zinc-600 bg-zinc-50 p-2.5 rounded-xl border border-zinc-100 leading-relaxed">
+                      <div className="mt-2 text-xs font-mono text-zinc-700 bg-zinc-50 p-2.5 rounded-xl border border-zinc-100 leading-relaxed">
                         {app.notes}
-                      </p>
+                      </div>
                     )}
-                  </div>
-
-                  {/* Bottom: Quick Status Switcher */}
-                  <div className="pt-2 border-t border-zinc-100 flex items-center justify-between gap-2">
-                    <span className="text-[10px] text-zinc-400 uppercase font-semibold">Stage</span>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {(Object.keys(STATUS_CONFIG) as ApplicationStatus[]).map((st) => {
-                        const isCurrent = app.status === st;
-                        return (
-                          <button
-                            key={st}
-                            type="button"
-                            onClick={() => handleStatusChange(app, st)}
-                            className={clsx(
-                              'px-2 py-1 rounded text-[10px] font-medium transition-all min-h-[28px]',
-                              isCurrent
-                                ? `${STATUS_CONFIG[st].badgeClass} font-bold ring-1 ring-zinc-400`
-                                : 'text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100'
-                            )}
-                          >
-                            {STATUS_CONFIG[st].label}
-                          </button>
-                        );
-                      })}
-                    </div>
                   </div>
                 </div>
               );
@@ -579,4 +617,3 @@ export function ApplicationsPipeline() {
     </div>
   );
 }
-

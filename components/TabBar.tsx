@@ -9,26 +9,17 @@ import {
   PaperResumeIcon,
   ClockHistoryIcon,
 } from '@/components/SvgIcons';
-import { Home, Plus, Settings, Briefcase } from 'lucide-react';
-import { useVault } from '@/store/useVault';
+import { Home, Plus, Settings } from 'lucide-react';
 import clsx from 'clsx';
 
 export function TabBar() {
   const pathname = usePathname();
-  const { manifest } = useVault();
-  const appCount = manifest?.applications?.length || 0;
 
   const navItems = [
     {
       href: '/',
       label: 'Home',
       icon: Home,
-    },
-    {
-      href: '/applications',
-      label: 'Tracker',
-      icon: Briefcase,
-      badge: appCount > 0 ? appCount : undefined,
     },
     {
       href: '/add',
@@ -87,11 +78,6 @@ export function TabBar() {
               >
                 <div className="relative">
                   <Icon size={19} />
-                  {item.badge !== undefined && (
-                    <span className="absolute -top-1 -right-2.5 min-w-[14px] h-[14px] px-1 rounded-full bg-zinc-950 text-white text-[9px] font-mono font-bold flex items-center justify-center shadow-xs">
-                      {item.badge}
-                    </span>
-                  )}
                 </div>
                 <span className="text-[11px] leading-tight font-mono mt-0.5">{item.label}</span>
                 {isActive && (
@@ -150,26 +136,6 @@ export function TabBar() {
             >
               <Home size={16} />
               <span>All Resumes</span>
-            </Link>
-
-            <Link
-              href="/applications"
-              className={clsx(
-                'flex items-center justify-between px-3 py-2 rounded-lg text-xs font-mono font-medium transition-colors min-h-[38px]',
-                pathname === '/applications'
-                  ? 'bg-zinc-100 text-zinc-950 font-semibold'
-                  : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-50'
-              )}
-            >
-              <div className="flex items-center gap-2.5">
-                <Briefcase size={16} />
-                <span>Job Tracker</span>
-              </div>
-              {appCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-zinc-200 text-zinc-700 text-[10px] font-semibold">
-                  {appCount}
-                </span>
-              )}
             </Link>
 
             <Link

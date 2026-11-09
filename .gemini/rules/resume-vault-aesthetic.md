@@ -169,19 +169,31 @@ globs: ["**/*.tsx", "**/*.ts", "**/*.css"]
   - Links remain permanently stored until explicitly deleted or updated by the user.
   - Fast one-click copy capability to accelerate job application form completion.
 
-## 16. Mobile Phone Ergonomics & First-Class Tracking Invariants
-- **First-Class Navigation Prominence**:
-  - The Job Application Tracker must be accessible directly from the primary navigation (mobile floating dock and desktop left rail) with real-time active application counter badges.
-  - Never bury core workflow features inside secondary deep-links or leaf pages alone.
+## 16. Navigation Hierarchy, Tree Anchoring & Bespoke Tracker Invariants
+- **Anti-Redundancy Navigation Hierarchy**:
+  - The primary navigation bar (mobile bottom dock and desktop left rail) must strictly host root-level application contexts: `Home`, `Add Resume`, and `Settings`.
+  - Never duplicate view modes into the navigation bar. Features with dedicated view switchers on the homepage (e.g. `[ Tree | Focused | Tracker ]`) must reside exclusively within the view switcher to avoid "double tabs" and visual clutter.
+- **Tree View Application Anchoring**:
+  - In visual tree graphs (`MultiBranchTreeGraph`) and commit timelines (`BranchTreeVisualizer`), any resume node with associated job applications must display the **latest place applied**: `{latestApp.company} · {latestApp.status}` (e.g. `Linear · Interviewing` or `Stripe · Applied`).
+  - If multiple applications exist for that version, display a discreet supplementary count tag (`+2`).
+- **High-Density Bespoke Reflog Tracker Aesthetic**:
+  - Never render generic four-box SaaS admin metric dashboards or boilerplate cards.
+  - Use a sleek, compact horizontal summary ribbon: `[ Total ] · [ Active (dot) ] · [ Offers (dot) ] · [ Applied (dot) ]`.
+  - Application records must follow a high-density git-reflog aesthetic:
+    - Tactile vertical stage indicator dot/line.
+    - Prominent company and role typography with discreet external link triggers.
+    - Attached resume version pill (`[BranchIcon] {branch.name} / {version.label}`) with 1-click preview link.
+    - Inline tactile stage progression allowing 1-click status advances without opening edit modals.
+    - Monospace notes block with clean indentation.
+    - Seamless mobile touch responsiveness with zero awkward line breaks.
 - **Mobile Thumbnail Aspect-Ratio Scaling**:
   - In card layouts (e.g. `HeroVersionCard`), never render oversized full-width preview rectangles on mobile devices.
   - Use compact, high-density media cards where a document aspect-ratio thumbnail (`w-20 h-28` to `w-24 h-32`) sits side-by-side with metadata and action chips.
 - **Touch-Friendly Branch Carousel in Focused View**:
   - In Focused View on mobile, replace nested dropdown menus with a touch-swipeable horizontal branch carousel showing color indicators and commit counts. Switching active branches must be a 1-tap operation.
-- **Strict Touch Target Ergonomics**:
-  - All interactive buttons, tabs, dropdown items, and icon controls on mobile must meet or exceed minimum $44\text{px}$ touch dimensions (`min-h-[44px]` or `min-w-[44px]`).
-- **No-Emoji Invariant Maintenance**:
-  - Status badges, pipeline chips, and company records must continue to use crisp monochrome typography and subtle colored status dots (`w-2 h-2 rounded-full`) without emojis.
+- **Strict Touch Target & Zero-Emoji Guardrails**:
+  - All interactive elements must maintain $\ge 44\text{px}$ touch targets.
+  - Maintain strictly zero emojis across all UI copy, badges, toasts, and code comments.
 
 
 

@@ -10,7 +10,7 @@ import { formatFileSize, createBlobFromBytes, downloadBlob, shareBlob } from '@/
 import { getCachedBlob } from '@/lib/cache';
 import { getFile } from '@/lib/github';
 import { showToast } from '@/components/ToastContainer';
-import { useVault, selectOrderedBranches, selectVersionsByBranch } from '@/store/useVault';
+import { useVault, selectOrderedBranches, selectVersionsByBranch, selectApplicationsByVersion } from '@/store/useVault';
 import { CreateBranchModal, DeleteBranchModal } from '@/components/BranchModal';
 import {
   GitBranchIcon,
@@ -19,7 +19,7 @@ import {
   DownloadIcon,
   ShareIcon,
 } from '@/components/SvgIcons';
-import { Plus, Trash2, MoreVertical, FileText, ExternalLink, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, MoreVertical, FileText, ExternalLink, ArrowRight, Briefcase } from 'lucide-react';
 import clsx from 'clsx';
 
 interface MultiBranchTreeGraphProps {
@@ -213,6 +213,8 @@ export function MultiBranchTreeGraph({
                           const isPdf =
                             version.mime === 'application/pdf' ||
                             version.fileName.endsWith('.pdf');
+                          const versionApps = selectApplicationsByVersion(manifest, version.id);
+                          const latestApp = versionApps[0] || null;
 
                           return (
                             <motion.div
@@ -271,6 +273,39 @@ export function MultiBranchTreeGraph({
                                     <p className="text-[10px] font-mono text-zinc-400 mt-0.5">
                                       {formatVersionDate(version.versionDate)} • {formatFileSize(version.sizeBytes)}
                                     </p>
+
+                                    {/* Latest Application Anchor */}
+                                    {latestApp && (
+                                      <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-50 border border-zinc-200/90 text-[10px] font-mono text-zinc-800 shadow-2xs">
+                                          <Briefcase size={10} className="text-zinc-500 shrink-0" />
+                                          <span className="font-bold text-zinc-950 truncate max-w-[110px] sm:max-w-[130px]">
+                                            {latestApp.company}
+                                          </span>
+                                          <span className="text-zinc-300">•</span>
+                                          <span
+                                            className={clsx(
+                                              'text-[9px] font-semibold capitalize',
+                                              latestApp.status === 'interviewing' && 'text-blue-700',
+                                              latestApp.status === 'offer' && 'text-emerald-700 font-bold',
+                                              latestApp.status === 'applied' && 'text-zinc-600',
+                                              latestApp.status === 'rejected' && 'text-rose-600',
+                                              latestApp.status === 'ghosted' && 'text-amber-600'
+                                            )}
+                                          >
+                                            {latestApp.status}
+                                          </span>
+                                        </span>
+                                        {versionApps.length > 1 && (
+                                          <span
+                                            className="text-[9px] font-mono font-medium text-zinc-400 bg-zinc-100 px-1 py-0.2 rounded border border-zinc-200/60"
+                                            title={`${versionApps.length} total applications sent with this version`}
+                                          >
+                                            +{versionApps.length - 1}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
 
                                   <button
