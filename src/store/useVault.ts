@@ -1,5 +1,14 @@
 import { create } from 'zustand';
-import { Manifest, Branch, Version, OutboxOp, SyncStatus, BRANCH_PALETTE } from '@/types';
+import {
+  Manifest,
+  Branch,
+  Version,
+  Application,
+  ProfileLinks,
+  OutboxOp,
+  SyncStatus,
+  BRANCH_PALETTE,
+} from '@/types';
 import {
   getCachedManifest,
   setCachedManifest,
@@ -62,6 +71,14 @@ interface VaultState {
   purgeVersion: (id: string) => Promise<void>;
   emptyAllTrash: () => Promise<void>;
 
+  // Applications
+  addApplication: (appData: Omit<Application, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Application>;
+  updateApplication: (id: string, updates: Partial<Omit<Application, 'id' | 'createdAt'>>) => Promise<void>;
+  deleteApplication: (id: string) => Promise<void>;
+
+  // Profile Links
+  updateProfileLinks: (links: ProfileLinks) => Promise<void>;
+
   // Outbox management
   appendOutboxOp: (op: OutboxOp) => Promise<void>;
   removeOutboxOps: (opIndicesOrFilter: (op: OutboxOp) => boolean) => Promise<void>;
@@ -101,6 +118,14 @@ export const createDefaultManifest = (): Manifest => ({
   versions: [],
   purgedVersionIds: [],
   purgedTrackIds: [],
+  applications: [],
+  links: {
+    linkedin: '',
+    github: '',
+    portfolio: '',
+    twitter: '',
+    custom: [],
+  },
 });
 
 export const useVault = create<VaultState>((set, get) => ({
@@ -596,6 +621,101 @@ export const useVault = create<VaultState>((set, get) => ({
 
     requestDebouncedSync();
   },
+
+  addApplication: async (appData) => {
+    const current = get().manifest || createDefaultManifest();
+    const now = new Date().toISOString();
+    const newApp: Application = {
+      id: crypto.randomUUID(),
+      ...appData,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const nextApplications = [newApp, ...(current.applications || [])];
+    const nextManifest: Manifest = {
+      ...current,
+      updatedAt: now,
+      applications: nextApplications,
+    };
+
+    // Synchronous state commit first
+    set({ manifest: nextManifest });
+
+    await setCachedManifest(nextManifest);
+    requestDebouncedSync();
+    return newApp;
+  },
+
+  updateApplication: async (id, updates) => {
+    const current = get().manifest;
+    if (!current) return;
+    const now = new Date().toISOString();
+
+    let found = false;
+    const nextApplications = (current.applications || []).map((app) => {
+      if (app.id === id) {
+        found = true;
+        return { ...app, ...updates, updatedAt: now };
+      }
+      return app;
+    });
+
+    if (!found) return;
+
+    const nextManifest: Manifest = {
+      ...current,
+      updatedAt: now,
+      applications: nextApplications,
+    };
+
+    set({ manifest: nextManifest });
+    await setCachedManifest(nextManifest);
+    requestDebouncedSync();
+  },
+
+  deleteApplication: async (id) => {
+    const current = get().manifest;
+    if (!current) return;
+    const now = new Date().toISOString();
+
+    const nextApplications = (current.applications || []).filter((app) => app.id !== id);
+    const nextManifest: Manifest = {
+      ...current,
+      updatedAt: now,
+      applications: nextApplications,
+    };
+
+    set({ manifest: nextManifest });
+    await setCachedManifest(nextManifest);
+    requestDebouncedSync();
+  },
+
+  updateProfileLinks: async (links) => {
+    const current = get().manifest || createDefaultManifest();
+    const now = new Date().toISOString();
+
+    const nextLinks: ProfileLinks = {
+      ...(current.links || {}),
+      ...links,
+    };
+
+    const nextManifest: Manifest = {
+      ...current,
+      updatedAt: now,
+      links: nextLinks,
+    };
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('stor.links', JSON.stringify(nextLinks));
+      } catch {}
+    }
+
+    set({ manifest: nextManifest });
+    await setCachedManifest(nextManifest);
+    requestDebouncedSync();
+  },
 }));
 
 // Selectors
@@ -683,5 +803,39 @@ export function selectBranchTreeData(manifest: Manifest | null): BranchTreeLane[
       totalVersions: versions.length,
     };
   });
+}
+
+export function selectApplicationsByVersion(
+  manifest: Manifest | null,
+  versionId: string
+): Application[] {
+  if (!manifest || !manifest.applications) return [];
+  return manifest.applications
+    .filter((a) => a.versionId === versionId)
+    .sort((a, b) => (b.appliedDate || '').localeCompare(a.appliedDate || ''));
+}
+
+export function selectAllApplications(manifest: Manifest | null): Application[] {
+  if (!manifest || !manifest.applications) return [];
+  return manifest.applications
+    .slice()
+    .sort((a, b) => (b.appliedDate || '').localeCompare(a.appliedDate || ''));
+}
+
+export function selectProfileLinks(manifest: Manifest | null): ProfileLinks {
+  if (manifest?.links) return manifest.links;
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('stor.links');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+  }
+  return {
+    linkedin: '',
+    github: '',
+    portfolio: '',
+    twitter: '',
+    custom: [],
+  };
 }
 

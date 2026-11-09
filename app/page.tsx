@@ -16,6 +16,7 @@ import { BranchTreeVisualizer } from '@/components/BranchTreeVisualizer';
 import { MultiBranchTreeGraph } from '@/components/MultiBranchTreeGraph';
 import { CreateBranchModal } from '@/components/BranchModal';
 import { BranchBadge } from '@/components/BranchBadge';
+import { ProfileLinksBar } from '@/components/ProfileLinksBar';
 import {
   GitBranchIcon,
   PaperResumeIcon,
@@ -117,6 +118,9 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6 pb-12">
+      {/* Permanent Career Profile Links */}
+      <ProfileLinksBar />
+
       {/* Top Header: Search bar + View Switcher + New Branch button */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search Input */}

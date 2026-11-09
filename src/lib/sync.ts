@@ -1,4 +1,4 @@
-import { Manifest, OutboxOp, Track, Version } from '@/types';
+import { Manifest, OutboxOp, Track, Version, Application, ProfileLinks } from '@/types';
 import {
   getManifest,
   putFile,
@@ -89,6 +89,41 @@ export function hasSemanticManifestDiff(localOrMerged: Manifest, remote: Manifes
   const localPurgedTracks = (localOrMerged.purgedTrackIds || []).slice().sort().join(',');
   const remotePurgedTracks = (remote.purgedTrackIds || []).slice().sort().join(',');
   if (localPurgedTracks !== remotePurgedTracks) return true;
+
+  const localApps = localOrMerged.applications || [];
+  const remoteApps = remote.applications || [];
+  if (localApps.length !== remoteApps.length) return true;
+  const remoteAppMap = new Map<string, Application>();
+  for (const a of remoteApps) remoteAppMap.set(a.id, a);
+  for (const a of localApps) {
+    const ra = remoteAppMap.get(a.id);
+    if (!ra) return true;
+    if (
+      a.versionId !== ra.versionId ||
+      a.company !== ra.company ||
+      a.role !== ra.role ||
+      a.status !== ra.status ||
+      a.appliedDate !== ra.appliedDate ||
+      (a.jobUrl || '') !== (ra.jobUrl || '') ||
+      (a.notes || '') !== (ra.notes || '')
+    ) {
+      return true;
+    }
+  }
+
+  const localLinks = localOrMerged.links || {};
+  const remoteLinks = remote.links || {};
+  if (
+    (localLinks.linkedin || '') !== (remoteLinks.linkedin || '') ||
+    (localLinks.github || '') !== (remoteLinks.github || '') ||
+    (localLinks.portfolio || '') !== (remoteLinks.portfolio || '') ||
+    (localLinks.twitter || '') !== (remoteLinks.twitter || '')
+  ) {
+    return true;
+  }
+  const localCustom = JSON.stringify(localLinks.custom || []);
+  const remoteCustom = JSON.stringify(remoteLinks.custom || []);
+  if (localCustom !== remoteCustom) return true;
 
   return false;
 }
@@ -211,6 +246,48 @@ export function mergeManifests(
   const mergedTracks = Array.from(trackMap.values()).sort((a, b) => a.order - b.order);
   const mergedVersions = Array.from(versionMap.values());
 
+  // Merge Applications with deduplication by ID and Last-Write-Wins (updatedAt)
+  const appMap = new Map<string, Application>();
+  for (const app of remote.applications || []) {
+    if (!app || !app.id) continue;
+    if (allPurgedVersionIds.has(app.versionId)) continue;
+    appMap.set(app.id, app);
+  }
+
+  for (const app of local.applications || []) {
+    if (!app || !app.id) continue;
+    if (allPurgedVersionIds.has(app.versionId)) continue;
+    const existing = appMap.get(app.id);
+    if (!existing) {
+      appMap.set(app.id, app);
+    } else {
+      const localTime = parseSafeTime(app.updatedAt);
+      const remoteTime = parseSafeTime(existing.updatedAt);
+      if (localTime >= remoteTime) {
+        appMap.set(app.id, app);
+      }
+    }
+  }
+
+  // Merge ProfileLinks
+  const pickLink = (localVal?: string, remoteVal?: string) => {
+    if (localVal && localVal.trim()) return localVal.trim();
+    if (remoteVal && remoteVal.trim()) return remoteVal.trim();
+    return '';
+  };
+
+  const mergedLinks: ProfileLinks = {
+    linkedin: pickLink(local.links?.linkedin, remote.links?.linkedin),
+    github: pickLink(local.links?.github, remote.links?.github),
+    portfolio: pickLink(local.links?.portfolio, remote.links?.portfolio),
+    twitter: pickLink(local.links?.twitter, remote.links?.twitter),
+    custom: (local.links?.custom && local.links.custom.length > 0)
+      ? local.links.custom
+      : (remote.links?.custom || []),
+  };
+
+  const mergedApplications = Array.from(appMap.values());
+
   return {
     schema: 1,
     updatedAt: new Date().toISOString(),
@@ -218,6 +295,8 @@ export function mergeManifests(
     versions: mergedVersions,
     purgedVersionIds: Array.from(allPurgedVersionIds),
     purgedTrackIds: Array.from(allPurgedTrackIds),
+    applications: mergedApplications,
+    links: mergedLinks,
   };
 }
 

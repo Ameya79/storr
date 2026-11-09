@@ -60,7 +60,7 @@ globs: ["**/*.tsx", "**/*.ts", "**/*.css"]
 
 ## 8. User-Centric Visual Simplicity, Full Lifecycle & Multi-Branch Tree
 - **Human-Friendly Terminology**:
-  - Replace raw git terminal strings in the primary reading flow (e.g. `git branch --resumes`, raw commit hash as titles, `<checkout: main ▾>`) with intuitive labels ("storr.", "Add Resume", branch selector with color dot, human dates).
+  - Replace raw git terminal strings in the primary reading flow (e.g. `git branch --resumes`, raw commit hash as titles, `<checkout: main ▾>`) with intuitive labels ("stor.", "Add Resume", branch selector with color dot, human dates).
   - Technical metadata (integrity SHA, file size, format) belongs in secondary badges or inspection drawers, not primary titles.
 - **Full Branch & Resume CRUD Lifecycle**:
   - Creating a branch must be 1 click away from headers, branch switchers, and tree graphs.
@@ -70,12 +70,12 @@ globs: ["**/*.tsx", "**/*.ts", "**/*.css"]
   - Provide a full multi-branch tree view visualizing all branches diverging from root/main with SVG connecting lines and interactive resume nodes.
   - Must be fully phone-optimized with smooth touch-scrolling/panning, $\ge 44\text{px}$ touch targets, and fluid bottom sheets for actions.
 
-## 9. `storr.` Minimal Aesthetic & UI Invariants
+## 9. `stor.` Minimal Aesthetic & UI Invariants
 - **Strict No-Emoji Policy**:
   - Never use emojis anywhere in the application (no 🌿, 🧭, 📊, 💻, 🎨, etc.).
   - Represent branches, statuses, and categories using clean monochrome vector SVGs (`GitBranchIcon`, `FileText`, `Trash2`), crisp pill badges, or minimal 8px color dots (`w-2 h-2 rounded-full`).
 - **Brand Identity**:
-  - The application name is strictly **`storr.`** (lowercase with period).
+  - The application name is strictly **`stor.`** (lowercase with period).
   - Use clean, minimal typography without unnecessary subtext or decorative clutter.
 - **Favicon & Brand Icon**:
   - All icons, favicons, and touch icons must follow the obsidian `#09090B` squircle with high-contrast white branching geometry and the signature white terminal dot (`.`).
@@ -139,6 +139,36 @@ globs: ["**/*.tsx", "**/*.ts", "**/*.css"]
   - All store selectors (`selectTrashVersions`, `selectVersionsByTrack`, `selectBranchVersions`) must explicitly filter against `manifest.purgedVersionIds` to guarantee that purged items are excluded from rendering even if stale records temporarily linger in local cache.
 - **UI Confirmation Busy Locking**:
   - All destructive modal or bottom sheet confirmation triggers (e.g. "Yes, Purge Forever", "Yes, Empty Trash") must implement busy/loading state locking (`isPurging`, `isPurgingAll`) to disable buttons and prevent double-clicks during debounced synchronization.
+
+## 14. Dual-Codebase Architecture (`stor.` vs `storr.`)
+- **Strict Identity Separation**:
+  - **`stor.` (Personal Private Instance)**:
+    - Repository Remote: `origin` (`https://github.com/Ameya79/resume-vault.git`).
+    - Naming: strictly `stor.` (single 'r' with period).
+    - Authentication: Hardcoded in `DEFAULT_CONFIG` (`Ameya79`, `resume-vault`, personal PAT).
+    - Zero Setup Friction: Automatically mounts and syncs personal resumes on boot with no `/setup` prompt.
+    - Data: Retains active PDF documents in `files/` and WebP thumbnails in `thumbs/`.
+  - **`storr.` (Open Source Software / Public Template)**:
+    - Repository Remote: `storr-public` (`https://github.com/Ameya79/storr.git`).
+    - Naming: strictly `storr.` (double 'r' with period).
+    - Authentication: Clean `DEFAULT_CONFIG` with empty strings. Never push personal secrets or PATs to prevent GitHub Push Protection blocks and credential leaks.
+    - Setup Flow: Guides external users through `/setup` with instructions for scoped private repositories.
+- **Cross-Remote Synchronization Protocol**:
+  - Core engine enhancements (sync fixes, tombstone handling, UI components, tests) must be ported to both remotes.
+  - When switching between remotes, enforce the respective `DEFAULT_CONFIG` and brand copy (`stor.` vs `storr.`) per remote.
+
+## 15. Application Tracking & Career Links Invariants
+- **Resume-Tied Application Tracking**:
+  - Applications must be explicitly associated with a specific resume version (`versionId`).
+  - Required fields: `id`, `versionId`, `company`, `role`, `status` (`applied` | `interviewing` | `offer` | `rejected` | `ghosted`), `appliedDate` (`YYYY-MM-DD`).
+  - Status chips must use clean monochrome or minimal color dots (no emojis).
+  - Placed prominently at the top of the resume detail view for rapid review during job searches.
+- **Permanent Profile Links Storage**:
+  - Dedicated storage in `Manifest.links` for core career URLs: `linkedin`, `github`, `portfolio`, `twitter`, and custom labeled links.
+  - Dual-persisted across `localStorage` and `IndexedDB`, and synced to `manifest.json` on GitHub.
+  - Links remain permanently stored until explicitly deleted or updated by the user.
+  - Fast one-click copy capability to accelerate job application form completion.
+
 
 
 

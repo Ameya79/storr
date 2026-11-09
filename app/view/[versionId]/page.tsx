@@ -15,6 +15,8 @@ import {
 } from '@/lib/files';
 import { formatVersionDate } from '@/lib/dates';
 import { BranchBadge } from '@/components/BranchBadge';
+import { ApplicationTracker } from '@/components/ApplicationTracker';
+import { ProfileLinksBar } from '@/components/ProfileLinksBar';
 import {
   PaperResumeIcon,
   DownloadIcon,
@@ -211,6 +213,12 @@ export default function DocumentViewerPage() {
           </button>
         </div>
       </div>
+
+      {/* Career Profile Links */}
+      <ProfileLinksBar />
+
+      {/* Resume-Tied Job Application Tracker */}
+      <ApplicationTracker versionId={version.id} versionLabel={version.label} />
 
       {/* Change Note and Tags Banner */}
       {(version.note || (version.tags && version.tags.length > 0)) && (

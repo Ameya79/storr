@@ -7,6 +7,7 @@ import {
   useVault,
   selectOrderedBranches,
   selectTrashVersions,
+  selectProfileLinks,
 } from '@/store/useVault';
 import { getConfig, encodeSetupCode, clearConfig } from '@/lib/config';
 import { clearAllCache } from '@/lib/cache';
@@ -23,7 +24,7 @@ import {
 } from '@/components/SvgIcons';
 import { usePwaInstall, InstallInstructionsModal } from '@/components/InstallPwaPrompt';
 import { showToast } from '@/components/ToastContainer';
-import { Branch } from '@/types';
+import { Branch, ProfileLink } from '@/types';
 import {
   RefreshCw,
   Copy,
@@ -40,6 +41,12 @@ import {
   Database,
   Lock,
   KeyRound,
+  Linkedin,
+  Github,
+  Globe,
+  Twitter,
+  Link as LinkIcon,
+  X,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -53,7 +60,37 @@ export default function SettingsPage() {
     updateBranch,
     reorderBranches,
     archiveBranch,
+    updateProfileLinks,
   } = useVault();
+
+  const profileLinks = selectProfileLinks(manifest);
+  const [linksLinkedIn, setLinksLinkedIn] = useState(profileLinks.linkedin || '');
+  const [linksGitHub, setLinksGitHub] = useState(profileLinks.github || '');
+  const [linksPortfolio, setLinksPortfolio] = useState(profileLinks.portfolio || '');
+  const [linksTwitter, setLinksTwitter] = useState(profileLinks.twitter || '');
+  const [linksCustom, setLinksCustom] = useState<ProfileLink[]>(profileLinks.custom || []);
+
+  useEffect(() => {
+    if (manifest?.links) {
+      setLinksLinkedIn(manifest.links.linkedin || '');
+      setLinksGitHub(manifest.links.github || '');
+      setLinksPortfolio(manifest.links.portfolio || '');
+      setLinksTwitter(manifest.links.twitter || '');
+      setLinksCustom(manifest.links.custom ? [...manifest.links.custom] : []);
+    }
+  }, [manifest?.links]);
+
+  const handleSaveProfileLinks = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateProfileLinks({
+      linkedin: linksLinkedIn.trim(),
+      github: linksGitHub.trim(),
+      portfolio: linksPortfolio.trim(),
+      twitter: linksTwitter.trim(),
+      custom: linksCustom.filter((c) => c.label.trim() && c.url.trim()),
+    });
+    showToast({ type: 'success', message: 'Profile links saved permanently' });
+  };
 
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -343,6 +380,154 @@ export default function SettingsPage() {
         >
           View Trash
         </Link>
+      </div>
+
+      {/* Career Profile Links Card */}
+      <div className="p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-subtle space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-800">
+              <LinkIcon size={15} />
+            </div>
+            <div>
+              <h3 className="text-xs font-mono font-bold text-zinc-900 uppercase tracking-wider">
+                Career Profile Links
+              </h3>
+              <p className="text-[11px] font-mono text-zinc-400">
+                Permanent URLs stored in vault &amp; available for 1-click copy
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveProfileLinks} className="space-y-3.5 font-mono text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="flex items-center gap-1.5 text-zinc-700 mb-1 font-medium text-[11px]">
+                <Linkedin size={12} className="text-zinc-500" />
+                <span>LinkedIn URL</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://linkedin.com/in/username"
+                value={linksLinkedIn}
+                onChange={(e) => setLinksLinkedIn(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-zinc-700 mb-1 font-medium text-[11px]">
+                <Github size={12} className="text-zinc-500" />
+                <span>GitHub URL</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://github.com/username"
+                value={linksGitHub}
+                onChange={(e) => setLinksGitHub(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-zinc-700 mb-1 font-medium text-[11px]">
+                <Globe size={12} className="text-zinc-500" />
+                <span>Portfolio / Website</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://yourname.com"
+                value={linksPortfolio}
+                onChange={(e) => setLinksPortfolio(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-zinc-700 mb-1 font-medium text-[11px]">
+                <Twitter size={12} className="text-zinc-500" />
+                <span>Twitter / X</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://x.com/username"
+                value={linksTwitter}
+                onChange={(e) => setLinksTwitter(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+              />
+            </div>
+          </div>
+
+          {/* Custom Links Section */}
+          <div className="pt-2 border-t border-zinc-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-600 font-medium text-[11px]">Custom Profile Links</span>
+              <button
+                type="button"
+                onClick={() =>
+                  setLinksCustom([
+                    ...linksCustom,
+                    { id: crypto.randomUUID(), label: '', url: '' },
+                  ])
+                }
+                className="inline-flex items-center gap-1 text-[11px] text-zinc-900 hover:underline"
+              >
+                <Plus size={11} />
+                <span>Add Custom Link</span>
+              </button>
+            </div>
+
+            {linksCustom.map((item) => (
+              <div key={item.id} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Label (e.g. Substack)"
+                  value={item.label}
+                  onChange={(e) =>
+                    setLinksCustom(
+                      linksCustom.map((c) =>
+                        c.id === item.id ? { ...c, label: e.target.value } : c
+                      )
+                    )
+                  }
+                  className="w-1/3 px-2.5 py-1.5 rounded-lg bg-zinc-50 border border-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                />
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={item.url}
+                  onChange={(e) =>
+                    setLinksCustom(
+                      linksCustom.map((c) =>
+                        c.id === item.id ? { ...c, url: e.target.value } : c
+                      )
+                    )
+                  }
+                  className="flex-1 px-2.5 py-1.5 rounded-lg bg-zinc-50 border border-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLinksCustom(linksCustom.filter((c) => c.id !== item.id))
+                  }
+                  className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-xl bg-zinc-950 text-white hover:bg-zinc-800 transition-colors text-xs font-semibold shadow-xs"
+            >
+              Save Profile Links
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Cache & Maintenance */}

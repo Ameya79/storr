@@ -38,6 +38,35 @@ export interface Version {
   deletedAt: ISOTime | null;
 }
 
+export type ApplicationStatus = 'applied' | 'interviewing' | 'offer' | 'rejected' | 'ghosted';
+
+export interface Application {
+  id: string;
+  versionId: string; // Links this application to the specific resume version used
+  company: string;
+  role: string;
+  status: ApplicationStatus;
+  appliedDate: ISODate; // YYYY-MM-DD
+  jobUrl?: string;
+  notes?: string;
+  createdAt: ISOTime;
+  updatedAt: ISOTime;
+}
+
+export interface ProfileLink {
+  id: string;
+  label: string;
+  url: string;
+}
+
+export interface ProfileLinks {
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+  twitter?: string;
+  custom?: ProfileLink[];
+}
+
 export interface Manifest {
   schema: 1;
   updatedAt: ISOTime;
@@ -45,6 +74,8 @@ export interface Manifest {
   versions: Version[];
   purgedVersionIds?: string[];
   purgedTrackIds?: string[];
+  applications?: Application[];
+  links?: ProfileLinks;
 }
 
 export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'error' | 'authError';
