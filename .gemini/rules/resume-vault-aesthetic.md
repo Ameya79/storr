@@ -195,6 +195,19 @@ globs: ["**/*.tsx", "**/*.ts", "**/*.css"]
   - All interactive elements must maintain $\ge 44\text{px}$ touch targets.
   - Maintain strictly zero emojis across all UI copy, badges, toasts, and code comments.
 
+## 17. Zero-Flash Authentication & Setup Guard Invariants (FOUC Prevention)
+- **Zero-Flash Unauthenticated Shell Guard**:
+  - In open-source distributions (`storr.`), fresh browser sessions, or logged-out states, the application shell MUST NOT mount or pre-render internal application chrome (`TabBar`, desktop sidebar rails, mobile headers) or internal page content (`HomePage`, resume cards, search bars, profile link bars) before credentials have been verified.
+  - When credentials are not verified and the active route is not `/setup`, the application shell must render a clean, brand-consistent blank canvas or minimal obsidian vault splash (`min-h-screen bg-canvas ... animate-pulse`) while verifying credentials or executing `router.replace('/setup')`.
+  - Static HTML pre-rendered at build time on unconfigured instances must never bake internal dashboard components into `/`.
+- **Synchronous Auth Hydration**:
+  - If `DEFAULT_CONFIG` has hardcoded credentials (personal `stor.`) or `localStorage` contains a valid token (returning `storr.` user), authenticate synchronously on initial render with zero delay or splash.
+  - If credentials must be restored from `IndexedDB`, hold the splash until the asynchronous restoration completes. Only reveal internal UI if valid credentials are recovered.
+- **Dual-Distribution Branding Consistency**:
+  - Personal private instance: strictly `stor.` (single 'r' with period).
+  - Open source / public template: strictly `storr.` (double 'r' with period).
+  - Ensure all titles, mobile headers, setup guides, and PWA prompts adhere strictly to their respective distribution identity.
+
 
 
 

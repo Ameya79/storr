@@ -1,3 +1,4 @@
+import React from 'react';
 import { SyncStatus } from '@/types';
 import clsx from 'clsx';
 

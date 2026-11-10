@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVault } from '@/store/useVault';
-import { getConfig } from '@/lib/config';
+import { getConfig, restoreConfigFromIndexedDB, DEFAULT_CONFIG } from '@/lib/config';
 import { setupSyncTriggers } from '@/lib/sync';
 import { onAuthError } from '@/lib/github';
 import { TabBar } from '@/components/TabBar';
@@ -15,16 +15,37 @@ import { InstallPwaHeaderButton } from '@/components/InstallPwaPrompt';
 import Link from 'next/link';
 import clsx from 'clsx';
 
+type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { syncStatus, hydrate, isHydrated } = useVault();
-  const [mounted, setMounted] = useState(false);
 
   const isSetupRoute = pathname === '/setup';
 
+  // Synchronous initial auth check to eliminate any flash of unauthenticated internal UI
+  const [authStatus, setAuthStatus] = useState<AuthStatus>(() => {
+    if (pathname === '/setup') {
+      return 'unauthenticated';
+    }
+    // Hardcoded default configuration (e.g. personal private instance)
+    if (DEFAULT_CONFIG.owner && DEFAULT_CONFIG.repo && DEFAULT_CONFIG.token) {
+      return 'authenticated';
+    }
+    // Synchronous client-side check if already saved in localStorage
+    if (typeof window !== 'undefined') {
+      const config = getConfig();
+      if (config) {
+        return 'authenticated';
+      }
+    }
+    // Unconfigured cold start or SSR
+    return 'checking';
+  });
+
+  // Hydrate vault and service worker
   useEffect(() => {
-    setMounted(true);
     hydrate();
 
     // Register Service Worker for PWA installability & offline support
@@ -33,31 +54,67 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [hydrate]);
 
-  // Check auth redirect on route change
+  // Authenticate and guard routes without flashing internal UI
   useEffect(() => {
-    if (!isHydrated) return;
-    const config = getConfig();
-    if (!config && pathname !== '/setup') {
-      router.replace('/setup');
-    }
-  }, [isHydrated, pathname, router]);
+    let active = true;
 
-  // Mount sync triggers once per app session (never re-triggered by route navigation)
+    async function verifyAuth() {
+      if (isSetupRoute) {
+        if (active) setAuthStatus('unauthenticated');
+        return;
+      }
+
+      // Check synchronous config first
+      let config = getConfig();
+
+      // If not in localStorage/default, check if it can be restored from IndexedDB
+      if (!config) {
+        config = await restoreConfigFromIndexedDB();
+      }
+
+      if (!active) return;
+
+      if (config) {
+        setAuthStatus('authenticated');
+      } else {
+        setAuthStatus('unauthenticated');
+        router.replace('/setup');
+      }
+    }
+
+    verifyAuth();
+
+    return () => {
+      active = false;
+    };
+  }, [isSetupRoute, pathname, router]);
+
+  // Mount sync triggers once authenticated (never re-triggered by route navigation)
   useEffect(() => {
-    if (!isHydrated) return;
-    const config = getConfig();
-    if (config) {
-      const cleanup = setupSyncTriggers();
-      return cleanup;
-    }
-  }, [isHydrated]);
+    if (authStatus !== 'authenticated') return;
+    const cleanup = setupSyncTriggers();
+    return cleanup;
+  }, [authStatus]);
 
+  // Handle GitHub token revocation/expiry
   useEffect(() => {
     const unsub = onAuthError(() => {
+      setAuthStatus('unauthenticated');
       router.replace('/setup?reauth=1');
     });
     return unsub;
   }, [router]);
+
+  // If navigating a protected route while unauthenticated or checking, hold a clean loading splash
+  if (!isSetupRoute && authStatus !== 'authenticated') {
+    return (
+      <div className="min-h-screen bg-canvas flex flex-col items-center justify-center font-mono">
+        <div className="w-11 h-11 rounded-2xl bg-zinc-950 text-white flex items-center justify-center shadow-subtle animate-pulse">
+          <GitBranchIcon size={18} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-canvas text-zinc-900 antialiased selection:bg-zinc-200 flex flex-col font-sans">
@@ -113,4 +170,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
