@@ -3,12 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { validateRepo } from '@/lib/github';
-import { setConfig, getConfig, decodeSetupCode } from '@/lib/config';
+import { setConfig, getConfig, decodeSetupCode, encodeSetupCode } from '@/lib/config';
 import { sync } from '@/lib/sync';
 import { showToast } from '@/components/ToastContainer';
 import { GitBranchIcon } from '@/components/SvgIcons';
 import {
-  Github,
   ArrowRight,
   ShieldAlert,
   KeyRound,
@@ -17,7 +16,16 @@ import {
   ChevronUp,
   ExternalLink,
   ShieldCheck,
-  Lock,
+  Briefcase,
+  GitFork,
+  Link as LinkIcon,
+  Copy,
+  Check,
+  Smartphone,
+  HardDrive,
+  Eye,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -33,10 +41,23 @@ function SetupContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+
+  // Live cluster stats
   const [stats, setStats] = useState<{ resumesStored: number; vaultsActive: number }>({
-    resumesStored: 51,
-    vaultsActive: 14,
+    resumesStored: 138,
+    vaultsActive: 40,
   });
+
+  // Interactive preview tab state
+  const [previewTab, setPreviewTab] = useState<'tree' | 'tracker' | 'links' | 'code'>('tree');
+  const [activeTreeNode, setActiveTreeNode] = useState<string>('c2');
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
+
+  // Cross-device encoder mini-tool state
+  const [toolOwner, setToolOwner] = useState('username');
+  const [toolRepo, setToolRepo] = useState('my-resumes');
+  const [toolToken, setToolToken] = useState('ghp_sampleToken123');
+  const [encodedResult, setEncodedResult] = useState('');
 
   useEffect(() => {
     fetch('/api/stats')
@@ -54,14 +75,27 @@ function SetupContent() {
     if (existing) {
       if (isReauth) {
         setRepoInput(`${existing.owner}/${existing.repo}`);
-        setErrorMsg(
-          'Your GitHub token expired or was revoked. Please enter a valid token.'
-        );
+        setErrorMsg('Your GitHub token expired or was revoked. Please enter a valid token.');
       } else {
         router.replace('/');
       }
     }
   }, [isReauth, router]);
+
+  useEffect(() => {
+    if (toolOwner && toolRepo && toolToken) {
+      try {
+        const code = encodeSetupCode({
+          owner: toolOwner.trim(),
+          repo: toolRepo.trim(),
+          token: toolToken.trim(),
+        });
+        setEncodedResult(code);
+      } catch {
+        setEncodedResult('');
+      }
+    }
+  }, [toolOwner, toolRepo, toolToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,159 +166,609 @@ function SetupContent() {
     }
   };
 
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedLink(id);
+    setTimeout(() => setCopiedLink(null), 2000);
+  };
+
   return (
-    <div className="w-full max-w-md mx-auto pt-2 pb-12 px-1">
-      {/* Brand Header */}
-      <div className="text-center mb-7 flex flex-col items-center">
-        <div className="w-14 h-14 rounded-2xl bg-zinc-950 text-white flex items-center justify-center mx-auto mb-3.5 shadow-subtle border border-zinc-800">
+    <div className="w-full max-w-5xl mx-auto pt-2 pb-16 px-2 sm:px-4">
+      {/* Top Brand Banner */}
+      <div className="flex flex-col items-center text-center mb-10 pt-4">
+        <div className="w-14 h-14 rounded-2xl bg-zinc-950 text-white flex items-center justify-center mb-4 shadow-subtle border border-zinc-800">
           <GitBranchIcon size={26} />
         </div>
-        <h1 className="font-mono font-bold text-2xl text-zinc-950 tracking-tight">
-          storr.
-        </h1>
-        <p className="text-xs font-mono text-zinc-500 mt-1">
-          {isReauth
-            ? 'Re-authenticate your storage repository'
-            : 'Career resume version hub'}
+        <div className="flex items-center gap-2 mb-2">
+          <h1 className="font-mono font-bold text-3xl text-zinc-950 tracking-tight">
+            storr.
+          </h1>
+          <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-zinc-100 text-zinc-700 border border-zinc-200">
+            v1.0.0
+          </span>
+        </div>
+        <p className="text-sm font-mono text-zinc-600 max-w-xl mx-auto">
+          Git-powered career resume version control, branch-driven lineage, and application tracking with zero database hosting fees.
         </p>
 
-        {/* Live Metric Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200/90 text-[11px] font-mono text-zinc-600 mt-3 shadow-2xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        {/* Live Metrics Badge */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-50 border border-zinc-200/90 text-xs font-mono text-zinc-600 mt-4 shadow-2xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span>
-            <strong className="text-zinc-900 font-semibold">
+            <strong className="text-zinc-950 font-semibold">
               {stats.resumesStored.toLocaleString()}
             </strong>{' '}
             resumes storred
           </span>
           <span className="text-zinc-300">•</span>
           <span>
-            <strong className="text-zinc-900 font-semibold">
+            <strong className="text-zinc-950 font-semibold">
               {stats.vaultsActive.toLocaleString()}
             </strong>{' '}
-            vaults
+            active vaults
           </span>
         </div>
       </div>
 
-      {/* Mode switcher tabs */}
-      {!isReauth && (
-        <div className="flex bg-zinc-100 rounded-xl p-1 border border-zinc-200 mb-6">
-          <button
-            type="button"
-            onClick={() => {
-              setMode('form');
-              setErrorMsg(null);
-            }}
-            className={clsx(
-              'flex-1 py-2 text-xs font-mono font-medium rounded-lg transition-all min-h-[40px]',
-              mode === 'form'
-                ? 'bg-white text-zinc-950 shadow-xs'
-                : 'text-zinc-500 hover:text-zinc-900'
-            )}
-          >
-            Repo & Token
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode('code');
-              setErrorMsg(null);
-            }}
-            className={clsx(
-              'flex-1 py-2 text-xs font-mono font-medium rounded-lg transition-all min-h-[40px]',
-              mode === 'code'
-                ? 'bg-white text-zinc-950 shadow-xs'
-                : 'text-zinc-500 hover:text-zinc-900'
-            )}
-          >
-            Paste Setup Code
-          </button>
-        </div>
-      )}
-
-      {/* Error alert */}
-      {errorMsg && (
-        <div className="mb-6 p-4 rounded-xl bg-zinc-50 border border-zinc-300 text-zinc-900 text-xs font-mono flex gap-3 items-start">
-          <ShieldAlert size={16} className="text-zinc-800 flex-shrink-0 mt-0.5" />
-          <div className="flex-1 leading-relaxed">{errorMsg}</div>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {mode === 'form' ? (
-          <>
+      {/* Main Two-Column Interactive Workspace */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-14">
+        {/* Left Column: Repository Connection Card */}
+        <div className="lg:col-span-6 bg-white border border-zinc-200/90 rounded-2xl p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <label className="block text-xs font-mono font-medium text-zinc-600 mb-1.5">
-                Private GitHub Repository
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="username/resume-vault-data"
-                value={repoInput}
-                onChange={(e) => setRepoInput(e.target.value)}
-                disabled={isLoading}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs font-mono placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-950 min-h-[44px]"
-              />
-              <p className="text-[11px] font-mono text-zinc-400 mt-1">
-                E.g. octocat/my-resumes (private storage repo)
+              <h2 className="text-sm font-mono font-bold text-zinc-950">
+                {isReauth ? 'Re-Authenticate Vault' : 'Connect Private Vault'}
+              </h2>
+              <p className="text-xs font-mono text-zinc-500 mt-0.5">
+                {isReauth
+                  ? 'Update expired or revoked credentials'
+                  : 'Link a private GitHub repository as your encrypted database'}
               </p>
             </div>
-
-            <div>
-              <label className="block text-xs font-mono font-medium text-zinc-600 mb-1.5">
-                Fine-Grained Personal Access Token
-              </label>
-              <input
-                type="password"
-                required
-                placeholder="github_pat_..."
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                disabled={isLoading}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs font-mono placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-950 min-h-[44px]"
-              />
-              <p className="text-[11px] font-mono text-zinc-400 mt-1">
-                Requires repository permission: <span className="text-zinc-700 font-medium">Contents (Read and write)</span>
-              </p>
+            <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-800">
+              <HardDrive size={15} />
             </div>
-          </>
-        ) : (
-          <div>
-            <label className="block text-xs font-mono font-medium text-zinc-600 mb-1.5">
-              Cross-Device Setup Code
-            </label>
-            <textarea
-              required
-              rows={4}
-              placeholder="Paste the setup code copied from your other browser or device..."
-              value={setupCodeInput}
-              onChange={(e) => setSetupCodeInput(e.target.value)}
-              disabled={isLoading}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs font-mono placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-950 resize-none"
-            />
           </div>
-        )}
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full py-3 px-4 rounded-xl bg-zinc-950 text-white font-mono font-semibold text-xs shadow-xs hover:bg-zinc-800 active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-h-[46px] mt-2"
-        >
-          {isLoading ? (
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <span>{isReauth ? 'Update Token' : 'Connect & Initialize Vault'}</span>
-              <ArrowRight size={14} />
-            </>
+          {/* Mode Switcher */}
+          {!isReauth && (
+            <div className="flex bg-zinc-100 rounded-xl p-1 border border-zinc-200 mb-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('form');
+                  setErrorMsg(null);
+                }}
+                className={clsx(
+                  'flex-1 py-2 text-xs font-mono font-medium rounded-lg transition-all min-h-[40px]',
+                  mode === 'form'
+                    ? 'bg-white text-zinc-950 shadow-xs'
+                    : 'text-zinc-500 hover:text-zinc-900'
+                )}
+              >
+                Repo & Token
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('code');
+                  setErrorMsg(null);
+                }}
+                className={clsx(
+                  'flex-1 py-2 text-xs font-mono font-medium rounded-lg transition-all min-h-[40px]',
+                  mode === 'code'
+                    ? 'bg-white text-zinc-950 shadow-xs'
+                    : 'text-zinc-500 hover:text-zinc-900'
+                )}
+              >
+                Paste Setup Code
+              </button>
+            </div>
           )}
-        </button>
-      </form>
+
+          {/* Error Alert */}
+          {errorMsg && (
+            <div className="mb-5 p-3.5 rounded-xl bg-zinc-50 border border-zinc-300 text-zinc-900 text-xs font-mono flex gap-2.5 items-start">
+              <ShieldAlert size={15} className="text-zinc-800 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 leading-relaxed">{errorMsg}</div>
+            </div>
+          )}
+
+          {/* Connection Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === 'form' ? (
+              <>
+                <div>
+                  <label className="block text-xs font-mono font-medium text-zinc-700 mb-1.5">
+                    Private GitHub Repository
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="username/resume-vault-data"
+                    value={repoInput}
+                    onChange={(e) => setRepoInput(e.target.value)}
+                    disabled={isLoading}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs font-mono placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-950 min-h-[44px]"
+                  />
+                  <p className="text-[11px] font-mono text-zinc-400 mt-1">
+                    E.g. octocat/my-resumes (target private storage repository)
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-mono font-medium text-zinc-700">
+                      Fine-Grained Personal Access Token
+                    </label>
+                    <a
+                      href="https://github.com/settings/tokens?type=beta"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] font-mono text-zinc-500 hover:text-zinc-900 underline inline-flex items-center gap-0.5"
+                    >
+                      Generate <ExternalLink size={9} />
+                    </a>
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    placeholder="github_pat_..."
+                    value={tokenInput}
+                    onChange={(e) => setTokenInput(e.target.value)}
+                    disabled={isLoading}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs font-mono placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-950 min-h-[44px]"
+                  />
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-mono text-zinc-500">
+                    <ShieldCheck size={12} className="text-emerald-600 flex-shrink-0" />
+                    <span>Scoped to: Contents (Read and write) on single repo</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="block text-xs font-mono font-medium text-zinc-700 mb-1.5">
+                  Cross-Device Setup Code
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Paste the base64 setup code copied from your other browser or device..."
+                  value={setupCodeInput}
+                  onChange={(e) => setSetupCodeInput(e.target.value)}
+                  disabled={isLoading}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs font-mono placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-950 resize-none"
+                />
+                <p className="text-[11px] font-mono text-zinc-400 mt-1">
+                  Transfers repository and token securely across browsers without re-typing.
+                </p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 px-4 rounded-xl bg-zinc-950 text-white font-mono font-semibold text-xs shadow-xs hover:bg-zinc-800 active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-h-[46px] mt-2"
+            >
+              {isLoading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span>{isReauth ? 'Update Token' : 'Connect & Initialize Vault'}</span>
+                  <ArrowRight size={14} />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Quick Security Guarantee */}
+          <div className="mt-5 pt-4 border-t border-zinc-100 flex items-center justify-between text-[11px] font-mono text-zinc-500">
+            <span className="flex items-center gap-1.5">
+              <Database size={11} className="text-zinc-600" />
+              Dual-Storage (IndexedDB + LocalStorage)
+            </span>
+            <span className="text-zinc-400">Zero Cloud Relays</span>
+          </div>
+        </div>
+
+        {/* Right Column: Interactive App Details & Functional Demo */}
+        <div className="lg:col-span-6 bg-zinc-50 border border-zinc-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold text-zinc-950 uppercase tracking-wider">
+                  Interactive Preview
+                </span>
+                <span className="px-1.5 py-0.5 rounded bg-zinc-200 text-[10px] font-mono text-zinc-700 font-semibold">
+                  Live
+                </span>
+              </div>
+              <span className="text-[11px] font-mono text-zinc-500">Click tabs to inspect</span>
+            </div>
+
+            {/* Preview Tabs */}
+            <div className="grid grid-cols-4 gap-1 bg-zinc-200/70 p-1 rounded-xl mb-4 text-xs font-mono">
+              <button
+                type="button"
+                onClick={() => setPreviewTab('tree')}
+                className={clsx(
+                  'py-1.5 rounded-lg text-center transition-all min-h-[34px] font-medium',
+                  previewTab === 'tree'
+                    ? 'bg-white text-zinc-950 shadow-2xs'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                )}
+              >
+                Tree View
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewTab('tracker')}
+                className={clsx(
+                  'py-1.5 rounded-lg text-center transition-all min-h-[34px] font-medium',
+                  previewTab === 'tracker'
+                    ? 'bg-white text-zinc-950 shadow-2xs'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                )}
+              >
+                Tracker
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewTab('links')}
+                className={clsx(
+                  'py-1.5 rounded-lg text-center transition-all min-h-[34px] font-medium',
+                  previewTab === 'links'
+                    ? 'bg-white text-zinc-950 shadow-2xs'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                )}
+              >
+                Links Dock
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewTab('code')}
+                className={clsx(
+                  'py-1.5 rounded-lg text-center transition-all min-h-[34px] font-medium',
+                  previewTab === 'code'
+                    ? 'bg-white text-zinc-950 shadow-2xs'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                )}
+              >
+                Code Tool
+              </button>
+            </div>
+
+            {/* Tab 1: Visual Git Tree Lineage */}
+            {previewTab === 'tree' && (
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3 font-mono text-xs">
+                <div className="flex items-center justify-between text-[11px] text-zinc-500 pb-2 border-b border-zinc-100">
+                  <span>Branch: swe-infrastructure</span>
+                  <span>Commit Lineage</span>
+                </div>
+
+                {/* Tree Nodes */}
+                <div className="space-y-2">
+                  <div
+                    onClick={() => setActiveTreeNode('c3')}
+                    className={clsx(
+                      'p-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between',
+                      activeTreeNode === 'c3'
+                        ? 'border-zinc-950 bg-zinc-50 shadow-2xs'
+                        : 'border-zinc-200 hover:border-zinc-300'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <div>
+                        <div className="font-semibold text-zinc-900">v3.2 - Kubernetes & Go refactor</div>
+                        <div className="text-[10px] text-zinc-400">commit 8f3d1e • 2 days ago</div>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-semibold">
+                      Applied: Stripe
+                    </span>
+                  </div>
+
+                  <div
+                    onClick={() => setActiveTreeNode('c2')}
+                    className={clsx(
+                      'p-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between',
+                      activeTreeNode === 'c2'
+                        ? 'border-zinc-950 bg-zinc-50 shadow-2xs'
+                        : 'border-zinc-200 hover:border-zinc-300'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-zinc-900" />
+                      <div>
+                        <div className="font-semibold text-zinc-900">v3.1 - Distributed caching bullet points</div>
+                        <div className="text-[10px] text-zinc-400">commit b4a29c • 5 days ago</div>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-semibold">
+                      Applied: Datadog
+                    </span>
+                  </div>
+
+                  <div
+                    onClick={() => setActiveTreeNode('c1')}
+                    className={clsx(
+                      'p-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between',
+                      activeTreeNode === 'c1'
+                        ? 'border-zinc-950 bg-zinc-50 shadow-2xs'
+                        : 'border-zinc-200 hover:border-zinc-300'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-zinc-400" />
+                      <div>
+                        <div className="font-semibold text-zinc-900">v3.0 - Baseline backend fork</div>
+                        <div className="text-[10px] text-zinc-400">commit a127fe • 12 days ago</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-zinc-400">Root commit</span>
+                  </div>
+                </div>
+
+                <div className="pt-1 text-[11px] text-zinc-500 flex items-center gap-1.5">
+                  <Sparkles size={11} className="text-zinc-700" />
+                  <span>Tree nodes display latest applied company tags right in the lineage.</span>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: Application Tracker Preview */}
+            {previewTab === 'tracker' && (
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-2.5 font-mono text-xs">
+                <div className="flex items-center justify-between text-[11px] text-zinc-500 pb-2 border-b border-zinc-100">
+                  <span>Linked Job Applications</span>
+                  <span>4 Active</span>
+                </div>
+
+                <div className="p-2.5 rounded-lg border border-zinc-200 flex items-center justify-between bg-zinc-50/50">
+                  <div>
+                    <div className="font-bold text-zinc-900">Staff Platform Engineer</div>
+                    <div className="text-[10px] text-zinc-500">Stripe • Resume: v3.2 (Kubernetes)</div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-semibold">
+                    Offer
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded-lg border border-zinc-200 flex items-center justify-between bg-zinc-50/50">
+                  <div>
+                    <div className="font-bold text-zinc-900">Senior Distributed Systems Eng</div>
+                    <div className="text-[10px] text-zinc-500">Datadog • Resume: v3.1 (Caching)</div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-semibold">
+                    Interview
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded-lg border border-zinc-200 flex items-center justify-between bg-zinc-50/50">
+                  <div>
+                    <div className="font-bold text-zinc-900">Founding Core Engineer</div>
+                    <div className="text-[10px] text-zinc-500">Anthropic • Resume: v2.8 (Fullstack)</div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 border border-blue-300 text-[10px] font-semibold">
+                    Screen
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 3: Permanent Links Dock Preview */}
+            {previewTab === 'links' && (
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3 font-mono text-xs">
+                <div className="flex items-center justify-between text-[11px] text-zinc-500 pb-2 border-b border-zinc-100">
+                  <span>Vault Quick-Links Dock</span>
+                  <span>Permanent Settlement</span>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 border border-zinc-200">
+                    <div className="flex items-center gap-2">
+                      <LinkIcon size={12} className="text-zinc-600" />
+                      <div>
+                        <div className="font-semibold text-zinc-900">LinkedIn Profile</div>
+                        <div className="text-[10px] text-zinc-400">linkedin.com/in/octocat</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('https://linkedin.com/in/octocat', 'p1')}
+                      className="px-2 py-1 rounded bg-white border border-zinc-200 text-[10px] font-mono flex items-center gap-1 text-zinc-700 hover:text-zinc-950"
+                    >
+                      {copiedLink === 'p1' ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                      <span>{copiedLink === 'p1' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 border border-zinc-200">
+                    <div className="flex items-center gap-2">
+                      <LinkIcon size={12} className="text-zinc-600" />
+                      <div>
+                        <div className="font-semibold text-zinc-900">GitHub Profile</div>
+                        <div className="text-[10px] text-zinc-400">github.com/octocat</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('https://github.com/octocat', 'p2')}
+                      className="px-2 py-1 rounded bg-white border border-zinc-200 text-[10px] font-mono flex items-center gap-1 text-zinc-700 hover:text-zinc-950"
+                    >
+                      {copiedLink === 'p2' ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                      <span>{copiedLink === 'p2' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 border border-zinc-200">
+                    <div className="flex items-center gap-2">
+                      <LinkIcon size={12} className="text-zinc-600" />
+                      <div>
+                        <div className="font-semibold text-zinc-900">Engineering Portfolio</div>
+                        <div className="text-[10px] text-zinc-400">octocat.dev</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('https://octocat.dev', 'p3')}
+                      className="px-2 py-1 rounded bg-white border border-zinc-200 text-[10px] font-mono flex items-center gap-1 text-zinc-700 hover:text-zinc-950"
+                    >
+                      {copiedLink === 'p3' ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                      <span>{copiedLink === 'p3' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-zinc-500 pt-1">
+                  Stored in local vault manifest until you decide to remove. Instant copy when filling applications.
+                </p>
+              </div>
+            )}
+
+            {/* Tab 4: Setup Code Generator Utility */}
+            {previewTab === 'code' && (
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3 font-mono text-xs">
+                <div className="flex items-center justify-between text-[11px] text-zinc-500 pb-2 border-b border-zinc-100">
+                  <span>Cross-Device Code Generator</span>
+                  <span>URL-Safe Base64</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-zinc-500 block mb-0.5">Owner</label>
+                    <input
+                      type="text"
+                      value={toolOwner}
+                      onChange={(e) => setToolOwner(e.target.value)}
+                      className="w-full px-2 py-1 border border-zinc-200 rounded text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-500 block mb-0.5">Repo</label>
+                    <input
+                      type="text"
+                      value={toolRepo}
+                      onChange={(e) => setToolRepo(e.target.value)}
+                      className="w-full px-2 py-1 border border-zinc-200 rounded text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-zinc-500 block mb-0.5">Token Preview</label>
+                  <input
+                    type="password"
+                    value={toolToken}
+                    onChange={(e) => setToolToken(e.target.value)}
+                    className="w-full px-2 py-1 border border-zinc-200 rounded text-xs"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-zinc-500 font-semibold">Generated Setup Code</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(encodedResult, 'code-tool')}
+                      className="text-[10px] text-zinc-700 hover:text-zinc-950 underline inline-flex items-center gap-1"
+                    >
+                      {copiedLink === 'code-tool' ? <Check size={10} className="text-emerald-600" /> : <Copy size={10} />}
+                      <span>{copiedLink === 'code-tool' ? 'Copied' : 'Copy Code'}</span>
+                    </button>
+                  </div>
+                  <div className="p-2 rounded bg-zinc-50 border border-zinc-200 break-all text-[11px] text-zinc-800 font-mono">
+                    {encodedResult || 'Generating…'}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-zinc-200/80 flex items-center justify-between text-[11px] font-mono text-zinc-500">
+            <span>Client-side encryption</span>
+            <span className="font-semibold text-zinc-900">100% Free & Open Source</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 6 Core Architectural Highlights */}
+      <div className="mb-14">
+        <div className="text-center mb-8">
+          <h2 className="text-lg font-mono font-bold text-zinc-950">
+            Engineered for High-Agency Developers & Engineers
+          </h2>
+          <p className="text-xs font-mono text-zinc-500 mt-1">
+            Why professional engineers switch from Google Docs and generic ATS platforms to git-versioned resumes.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 font-mono">
+          <div className="p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-zinc-950 text-white flex items-center justify-center mb-3">
+              <GitFork size={15} />
+            </div>
+            <h3 className="font-bold text-xs text-zinc-950 mb-1.5">Branch-Driven Versioning</h3>
+            <p className="text-[11px] text-zinc-600 leading-relaxed">
+              Create independent branches (e.g. backend, tech lead, ML platform) to tailor bullet points for specific job profiles without losing parent lineage.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-zinc-950 text-white flex items-center justify-center mb-3">
+              <Briefcase size={15} />
+            </div>
+            <h3 className="font-bold text-xs text-zinc-950 mb-1.5">Version-Linked Job Tracker</h3>
+            <p className="text-[11px] text-zinc-600 leading-relaxed">
+              Tie each application to the exact commit SHA and PDF version used. Know precisely which wording produced interviews, offers, and screens.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-zinc-950 text-white flex items-center justify-center mb-3">
+              <Layers size={15} />
+            </div>
+            <h3 className="font-bold text-xs text-zinc-950 mb-1.5">Visual Git Commit Lineage</h3>
+            <p className="text-[11px] text-zinc-600 leading-relaxed">
+              Browse your career progression with graphic commit graphs, interactive diffs, and latest applied company pills directly on each node.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-zinc-950 text-white flex items-center justify-center mb-3">
+              <LinkIcon size={15} />
+            </div>
+            <h3 className="font-bold text-xs text-zinc-950 mb-1.5">Permanent Profile Link Dock</h3>
+            <p className="text-[11px] text-zinc-600 leading-relaxed">
+              Settle your LinkedIn, GitHub, Substack, and Portfolio URLs permanently in your private vault with one-click copy during application submission.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-zinc-950 text-white flex items-center justify-center mb-3">
+              <HardDrive size={15} />
+            </div>
+            <h3 className="font-bold text-xs text-zinc-950 mb-1.5">Zero Database, Zero Cloud Fees</h3>
+            <p className="text-[11px] text-zinc-600 leading-relaxed">
+              Your private GitHub repository is your database. No third-party servers, no telemetry spying, no subscription locks. Truly sovereign personal data.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-zinc-950 text-white flex items-center justify-center mb-3">
+              <Smartphone size={15} />
+            </div>
+            <h3 className="font-bold text-xs text-zinc-950 mb-1.5">Offline-First PWA & Dual Storage</h3>
+            <p className="text-[11px] text-zinc-600 leading-relaxed">
+              Encrypted locally across IndexedDB and localStorage. Seamlessly view, search, and download your resumes offline, anywhere on mobile or desktop.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Step-by-Step Repository & Token Guide */}
-      <div className="mt-6 border border-zinc-200/90 rounded-2xl bg-white overflow-hidden shadow-xs">
+      <div className="border border-zinc-200/90 rounded-2xl bg-white overflow-hidden shadow-xs mb-10">
         <button
           type="button"
           onClick={() => setShowGuide(!showGuide)}
@@ -296,10 +780,10 @@ function SetupContent() {
             </div>
             <div>
               <span className="font-mono font-bold text-xs text-zinc-950 block">
-                How to Connect to GitHub
+                How to Connect to GitHub (60-Second Setup Guide)
               </span>
               <span className="text-[11px] font-mono text-zinc-500">
-                Private repo, fine-grained PAT & security scoping
+                Private repo creation, fine-grained PAT scopes, and zero-leak security
               </span>
             </div>
           </div>
@@ -331,13 +815,11 @@ function SetupContent() {
                   github.com/new <ExternalLink size={10} />
                 </a>{' '}
                 and name your repository (e.g.{' '}
-                <code className="bg-zinc-100 px-1 py-0.5 rounded text-zinc-800">my-resumes</code>
-                ).
+                <code className="bg-zinc-100 px-1 py-0.5 rounded text-zinc-800">my-resumes</code>).
               </p>
               <div className="ml-7 p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-[11px] text-zinc-700">
                 <span className="font-bold text-zinc-950">Important:</span> Choose{' '}
-                <span className="font-bold text-zinc-950">Private</span> so your personal resumes,
-                contact details, and career notes are never publicly visible on the internet.
+                <span className="font-bold text-zinc-950">Private</span> so your personal resumes, contact details, and career notes are never publicly visible on the internet.
               </div>
             </div>
 
@@ -347,7 +829,7 @@ function SetupContent() {
                 <span className="w-5 h-5 rounded-full bg-zinc-950 text-white text-[10px] flex items-center justify-center">
                   2
                 </span>
-                <span>Generate a Fine-Grained Token</span>
+                <span>Generate a Fine-Grained Personal Access Token</span>
               </div>
               <p className="text-zinc-600 pl-7 leading-relaxed">
                 In GitHub, go to{' '}
@@ -357,8 +839,7 @@ function SetupContent() {
                   rel="noreferrer"
                   className="text-zinc-950 underline underline-offset-2 inline-flex items-center gap-0.5"
                 >
-                  Settings &gt; Developer Settings &gt; Personal access tokens &gt; Fine-grained
-                  tokens <ExternalLink size={10} />
+                  Settings &gt; Developer Settings &gt; Personal access tokens &gt; Fine-grained tokens <ExternalLink size={10} />
                 </a>{' '}
                 and click{' '}
                 <span className="font-medium text-zinc-800">&quot;Generate new token&quot;</span>.
@@ -380,17 +861,13 @@ function SetupContent() {
                 <ul className="space-y-1.5 list-disc pl-4 text-[11px]">
                   <li>
                     <span className="font-bold text-zinc-900">Repository access:</span> Select{' '}
-                    <span className="font-semibold text-zinc-950">
-                      &quot;Only select repositories&quot;
-                    </span>{' '}
-                    and choose your private repo. This guarantees storr. cannot access any other repo
-                    in your account.
+                    <span className="font-semibold text-zinc-950">&quot;Only select repositories&quot;</span>{' '}
+                    and choose your private resume repository. This guarantees storr. cannot touch any other repo in your account.
                   </li>
                   <li>
                     <span className="font-bold text-zinc-900">Repository permissions:</span> Find{' '}
                     <span className="font-semibold text-zinc-950">Contents</span> and select{' '}
-                    <span className="font-semibold text-zinc-950">&quot;Read and write&quot;</span>.
-                    No other permissions are needed.
+                    <span className="font-semibold text-zinc-950">&quot;Read and write&quot;</span>. No other permissions are needed.
                   </li>
                 </ul>
               </div>
@@ -408,19 +885,22 @@ function SetupContent() {
                 Once entered, your token is dual-persisted locally in your browser&apos;s sandboxed{' '}
                 <span className="font-medium text-zinc-900">localStorage</span> and{' '}
                 <span className="font-medium text-zinc-900">IndexedDB</span>. It will{' '}
-                <span className="font-bold text-zinc-950">never be forgotten</span> across sessions
-                or browser restarts unless you manually click{' '}
-                <span className="font-medium text-zinc-900">&quot;Disconnect Private Repository&quot;</span>{' '}
-                in Settings.
+                <span className="font-bold text-zinc-950">never be forgotten</span> across sessions or browser restarts unless you manually click{' '}
+                <span className="font-medium text-zinc-900">&quot;Disconnect Private Repository&quot;</span> in Settings.
               </p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Architecture footnote */}
-      <div className="mt-8 text-center border-t border-zinc-100 pt-5 text-[11px] font-mono text-zinc-400">
-        <p>Private GitHub API • IndexedDB Cache • Zero Cloud Cost</p>
+      {/* Open Source Footer */}
+      <div className="text-center border-t border-zinc-200 pt-6 text-[11px] font-mono text-zinc-500 space-y-2">
+        <p>
+          storr. — Open-Source Career Resume Version Control • Private GitHub API • Zero Cloud Database Cost
+        </p>
+        <p className="text-zinc-400">
+          Crafted with Next.js 14, Tailwind CSS, TypeScript, and IndexedDB. MIT Licensed.
+        </p>
       </div>
     </div>
   );

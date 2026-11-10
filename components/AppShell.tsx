@@ -143,13 +143,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main
         className={clsx(
           'flex-1 pb-28 lg:pb-12 pt-safe',
-          !isSetupRoute ? 'lg:pl-64' : 'flex flex-col items-center justify-center min-h-[92vh]'
+          !isSetupRoute ? 'lg:pl-64' : 'flex flex-col items-center min-h-[92vh]'
         )}
       >
         <div
           className={clsx(
             'w-full px-4 sm:px-6 lg:px-8 py-5',
-            !isSetupRoute ? 'max-w-4xl mx-auto' : 'max-w-md mx-auto flex flex-col justify-center'
+            !isSetupRoute ? 'max-w-4xl mx-auto' : 'max-w-5xl mx-auto'
           )}
         >
           <AnimatePresence mode="wait">
