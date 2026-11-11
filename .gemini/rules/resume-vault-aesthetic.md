@@ -208,6 +208,19 @@ globs: ["**/*.tsx", "**/*.ts", "**/*.css"]
   - Open source / public template: strictly `storr.` (double 'r' with period).
   - Ensure all titles, mobile headers, setup guides, and PWA prompts adhere strictly to their respective distribution identity.
 
+## 18. Mobile-First Landing & Onboarding Layout Invariants (De-Clutter & Visual Hierarchy)
+- **Responsive Workspace Architecture**:
+  - Complex interactive simulation workbenches (e.g. live tree lineage visualizers, mock job boards, code generators) built for wide desktop displays ($\ge 1024\text{px}$) MUST NOT simply stack into a massive second card on mobile devices.
+  - On mobile viewports ($< 1024\text{px}$), the onboarding experience must prioritize clean, single-purpose clarity: a focused connection card followed by compact, scannable feature highlights, or a clear segmented toggle (`[ Connect Private Vault | Live Demo & Preview ]`).
+- **Typography Hierarchy (Monospace Restraint)**:
+  - Do NOT format long prose, marketing subheadings, or explanatory instructions in `font-mono`.
+  - Use clean proportional typography (`font-sans`) for headings, body copy, and form helper text to prevent premature line wrapping on mobile.
+  - Reserve `font-mono` strictly for brand logos (`storr.`), commit hashes, branch tags, code snippets, tokens, and numerical metric pills.
+- **Mobile Card Padding & Metadata Wrapping**:
+  - Use responsive padding (`p-4 sm:p-6`) on mobile containers to maximize usable reading space.
+  - Avoid rigid multi-column horizontal splits for lengthy metadata strings below action buttons. Use centered, stacked, or dot-separated single-line badges that fit gracefully across 360px–414px mobile viewports.
+  - Feature highlights on mobile must be punchy and scannable with 1-line descriptions, avoiding vertical scroll bloat.
+
 
 
 
