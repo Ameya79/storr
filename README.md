@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/resumes%20storred-51-09090b?style=flat-square" alt="Resumes Storred" />
-  <img src="https://img.shields.io/badge/active%20vaults-14-18181b?style=flat-square" alt="Active Vaults" />
-  <img src="https://img.shields.io/badge/license-MIT-71717a?style=flat-square" alt="License" />
+  <img src="https://img.shields.io/badge/storage-Private%20GitHub%20API-09090b?style=flat-square" alt="Storage: Private GitHub API" />
+  <img src="https://img.shields.io/badge/architecture-Client--Side%20PWA-18181b?style=flat-square" alt="Architecture: Client-Side PWA" />
+  <img src="https://img.shields.io/badge/license-MIT-71717a?style=flat-square" alt="License: MIT" />
 </p>
 
 <p align="center">

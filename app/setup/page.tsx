@@ -42,10 +42,10 @@ function SetupContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
 
-  // Live cluster stats
+  // Real live event metrics
   const [stats, setStats] = useState<{ resumesStored: number; vaultsActive: number }>({
-    resumesStored: 146,
-    vaultsActive: 42,
+    resumesStored: 0,
+    vaultsActive: 0,
   });
 
   // Interactive preview tab state
@@ -191,22 +191,32 @@ function SetupContent() {
           Git-powered career resume version control, branch-driven lineage, and application tracking with zero database hosting fees.
         </p>
 
-        {/* Live Metrics Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-50 border border-zinc-200/90 text-xs font-sans text-zinc-600 mt-3.5 shadow-2xs">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
-          <span>
-            <strong className="text-zinc-950 font-mono font-semibold">
-              {stats.resumesStored.toLocaleString()}
-            </strong>{' '}
-            resumes storred
-          </span>
-          <span className="text-zinc-300">•</span>
-          <span>
-            <strong className="text-zinc-950 font-mono font-semibold">
-              {stats.vaultsActive.toLocaleString()}
-            </strong>{' '}
-            active vaults
-          </span>
+        {/* Trust & Verification Badge */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-50 border border-zinc-200/90 text-xs font-sans text-zinc-600 mt-3.5 shadow-2xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+          {stats.resumesStored > 0 ? (
+            <>
+              <span>
+                <strong className="text-zinc-950 font-mono font-semibold">
+                  {stats.resumesStored.toLocaleString()}
+                </strong>{' '}
+                resumes storred
+              </span>
+              <span className="text-zinc-300">•</span>
+              <span>
+                <strong className="text-zinc-950 font-mono font-semibold">
+                  {stats.vaultsActive.toLocaleString()}
+                </strong>{' '}
+                active vaults
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="font-medium text-zinc-800">100% Client-Side Privacy</span>
+              <span className="text-zinc-300">•</span>
+              <span>Zero Server Tracking</span>
+            </>
+          )}
         </div>
       </div>
 

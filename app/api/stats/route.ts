@@ -1,57 +1,10 @@
 import { NextResponse } from 'next/server';
 
-// Distributed telemetry reconciliation & edge activity aggregation
-// Reconciles decentralized node heartbeats and client-side sync events
-const TELEMETRY_CHECKPOINT_EPOCH = 1794000000000;
-const AGGREGATION_WINDOW_MS = 6 * 3600 * 1000;
-const BASE_TELEMETRY = {
-  resumesStored: 58,
-  vaultsActive: 16,
+// Real event counters (in-memory fallback when KV / Upstash is not configured)
+const realStats = {
+  resumesStored: 0,
+  vaultsActive: 0,
 };
-
-// In-memory counter for real-time live events
-const liveTelemetry = {
-  committedResumes: 0,
-  connectedVaults: 0,
-};
-
-function getDeterministicStepJitter(index: number, seed: number): number {
-  const hash = (index * 1664525 + seed * 1013904223) >>> 0;
-  return hash;
-}
-
-function reconcileClusterTelemetry(): { resumesStored: number; vaultsActive: number } {
-  const now = Date.now();
-  const elapsed = Math.max(0, now - TELEMETRY_CHECKPOINT_EPOCH);
-  const completedWindows = Math.floor(elapsed / AGGREGATION_WINDOW_MS);
-  const currentWindowProgress = (elapsed % AGGREGATION_WINDOW_MS) / AGGREGATION_WINDOW_MS;
-
-  let aggregatedResumes = BASE_TELEMETRY.resumesStored;
-  let aggregatedVaults = BASE_TELEMETRY.vaultsActive;
-
-  // Aggregate step delta across completed windows
-  for (let i = 0; i < completedWindows; i++) {
-    // Monotonic jitter: 4, 5, or 6 resumes per window
-    const resumeJitter = 4 + (getDeterministicStepJitter(i, 7) % 3);
-    // Monotonic jitter: 1 or 2 vaults per window
-    const vaultJitter = 1 + (getDeterministicStepJitter(i, 13) % 2);
-
-    aggregatedResumes += resumeJitter;
-    aggregatedVaults += vaultJitter;
-  }
-
-  // Progressive intra-window telemetry synthesis
-  const currentResumeStep = 4 + (getDeterministicStepJitter(completedWindows, 7) % 3);
-  const currentVaultStep = 1 + (getDeterministicStepJitter(completedWindows, 13) % 2);
-
-  aggregatedResumes += Math.floor(currentResumeStep * currentWindowProgress);
-  aggregatedVaults += Math.floor(currentVaultStep * currentWindowProgress);
-
-  return {
-    resumesStored: aggregatedResumes + liveTelemetry.committedResumes,
-    vaultsActive: aggregatedVaults + liveTelemetry.connectedVaults,
-  };
-}
 
 // Lightweight rate limiting: max 30 requests per minute per IP
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -72,9 +25,6 @@ function checkRateLimit(ip: string): boolean {
 
 export async function GET() {
   try {
-    const clusterStats = reconcileClusterTelemetry();
-
-    // If Upstash Redis or Vercel KV environment variables are present, merge live keys
     const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
     const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
@@ -88,15 +38,15 @@ export async function GET() {
         const stored = parseInt(data.result?.[0] || '0', 10);
         const vaults = parseInt(data.result?.[1] || '0', 10);
         return NextResponse.json({
-          resumesStored: clusterStats.resumesStored + (stored > 0 ? stored : 0),
-          vaultsActive: clusterStats.vaultsActive + (vaults > 0 ? vaults : 0),
+          resumesStored: stored > 0 ? stored : 0,
+          vaultsActive: vaults > 0 ? vaults : 0,
         });
       }
     }
 
-    return NextResponse.json(clusterStats);
+    return NextResponse.json(realStats);
   } catch {
-    return NextResponse.json(reconcileClusterTelemetry());
+    return NextResponse.json(realStats);
   }
 }
 
@@ -118,9 +68,9 @@ export async function POST(req: Request) {
     }
 
     if (action === 'resume_committed') {
-      liveTelemetry.committedResumes += 1;
+      realStats.resumesStored += 1;
     } else if (action === 'vault_connected') {
-      liveTelemetry.connectedVaults += 1;
+      realStats.vaultsActive += 1;
     }
 
     // Persist to Upstash / Vercel KV if configured
@@ -134,9 +84,8 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({ ok: true, stats: reconcileClusterTelemetry() });
+    return NextResponse.json({ ok: true, stats: realStats });
   } catch {
     return NextResponse.json({ ok: false }, { status: 500 });
   }
 }
-
