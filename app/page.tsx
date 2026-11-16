@@ -139,7 +139,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-zinc-400 hover:text-zinc-700 transition-colors"
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-zinc-400 hover:text-zinc-700 transition-colors"
               aria-label="Clear search"
             >
               <X className="w-4 h-4" />
@@ -154,7 +154,7 @@ export default function HomePage() {
               type="button"
               onClick={() => handleToggleView('tree')}
               className={clsx(
-                'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 min-h-[36px]',
+                'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 min-h-[44px]',
                 viewMode === 'tree'
                   ? 'bg-white text-zinc-950 shadow-xs font-semibold'
                   : 'text-zinc-500 hover:text-zinc-900'
@@ -167,7 +167,7 @@ export default function HomePage() {
               type="button"
               onClick={() => handleToggleView('focus')}
               className={clsx(
-                'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 min-h-[36px]',
+                'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 min-h-[44px]',
                 viewMode === 'focus'
                   ? 'bg-white text-zinc-950 shadow-xs font-semibold'
                   : 'text-zinc-500 hover:text-zinc-900'
@@ -180,7 +180,7 @@ export default function HomePage() {
               type="button"
               onClick={() => handleToggleView('tracker')}
               className={clsx(
-                'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 min-h-[36px]',
+                'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 min-h-[44px]',
                 viewMode === 'tracker'
                   ? 'bg-white text-zinc-950 shadow-xs font-semibold'
                   : 'text-zinc-500 hover:text-zinc-900'
@@ -206,7 +206,7 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => setIsCreateBranchOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-950 text-white text-xs font-medium hover:bg-zinc-800 transition-colors shadow-xs min-h-[42px]"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-zinc-950 text-white text-xs font-medium hover:bg-zinc-800 transition-colors shadow-xs min-h-[44px]"
           >
             <Plus size={14} />
             <span className="hidden sm:inline">New Branch</span>

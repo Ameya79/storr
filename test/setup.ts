@@ -6,6 +6,22 @@ if (typeof structuredClone === 'undefined') {
   global.structuredClone = (val: unknown) => JSON.parse(JSON.stringify(val));
 }
 
+// Polyfill Blob.prototype.arrayBuffer if needed in jsdom
+if (typeof Blob !== 'undefined' && !Blob.prototype.arrayBuffer) {
+  Blob.prototype.arrayBuffer = async function () {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(this);
+    });
+  };
+}
+
+if (typeof File !== 'undefined' && !File.prototype.arrayBuffer) {
+  File.prototype.arrayBuffer = Blob.prototype.arrayBuffer;
+}
+
 // Polyfill window.matchMedia for jsdom tests
 if (typeof window !== 'undefined' && !window.matchMedia) {
   Object.defineProperty(window, 'matchMedia', {

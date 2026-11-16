@@ -26,6 +26,7 @@ import {
 } from '@/components/SvgIcons';
 import { showToast } from '@/components/ToastContainer';
 import { ArrowLeft, Loader2, WifiOff, RefreshCw, FileText, Trash2 } from 'lucide-react';
+import { ReplaceResumeModal } from '@/components/ReplaceResumeModal';
 
 export default function DocumentViewerPage() {
   const params = useParams();
@@ -40,6 +41,7 @@ export default function DocumentViewerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isOfflineUnavailable, setIsOfflineUnavailable] = useState(false);
   const [numPages, setNumPages] = useState<number | null>(null);
+  const [isReplaceOpen, setIsReplaceOpen] = useState(false);
 
   const pagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -151,7 +153,7 @@ export default function DocumentViewerPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="w-9 h-9 rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:text-zinc-950 hover:bg-zinc-50 transition-colors flex-shrink-0"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:text-zinc-950 hover:bg-zinc-50 transition-colors flex-shrink-0"
             aria-label="Back"
           >
             <ArrowLeft size={16} />
@@ -176,9 +178,19 @@ export default function DocumentViewerPage() {
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             type="button"
+            onClick={() => setIsReplaceOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 text-xs font-mono font-medium shadow-xs transition-all min-h-[44px]"
+            title="Replace resume"
+          >
+            <RefreshCw size={14} />
+            <span className="hidden sm:inline">Replace</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleDownload}
             disabled={!bytes}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 disabled:opacity-40 text-xs font-mono font-medium shadow-xs transition-all min-h-[40px]"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 disabled:opacity-40 text-xs font-mono font-medium shadow-xs transition-all min-h-[44px]"
             title="Download file"
           >
             <DownloadIcon size={14} />
@@ -189,7 +201,7 @@ export default function DocumentViewerPage() {
             type="button"
             onClick={handleShare}
             disabled={!bytes}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 disabled:opacity-40 text-xs font-mono font-medium shadow-xs transition-all min-h-[40px]"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 disabled:opacity-40 text-xs font-mono font-medium shadow-xs transition-all min-h-[44px]"
             title="Share file"
           >
             <ShareIcon size={14} />
@@ -205,7 +217,7 @@ export default function DocumentViewerPage() {
                 router.push(branch ? `/branch/${branch.id}` : '/');
               }
             }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-mono font-medium shadow-xs transition-all min-h-[40px]"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-mono font-medium shadow-xs transition-all min-h-[44px]"
             title="Delete resume"
           >
             <Trash2 size={14} />
@@ -297,7 +309,7 @@ export default function DocumentViewerPage() {
               <button
                 type="button"
                 onClick={handleDownload}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium hover:bg-zinc-800 transition-all flex items-center justify-center gap-2 min-h-[44px]"
               >
                 <DownloadIcon size={14} />
                 <span>Download DOCX</span>
@@ -305,7 +317,7 @@ export default function DocumentViewerPage() {
               <button
                 type="button"
                 onClick={handleShare}
-                className="flex-1 py-2.5 px-4 rounded-xl border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 transition-all text-xs font-mono font-medium flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 px-4 rounded-xl border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 transition-all text-xs font-mono font-medium flex items-center justify-center gap-2 min-h-[44px]"
               >
                 <ShareIcon size={14} />
                 <span>Share</span>
@@ -314,6 +326,15 @@ export default function DocumentViewerPage() {
           </div>
         )}
       </div>
+
+      <ReplaceResumeModal
+        isOpen={isReplaceOpen}
+        onClose={() => setIsReplaceOpen(false)}
+        version={version}
+        onReplaced={() => {
+          loadFile();
+        }}
+      />
     </div>
   );
 }

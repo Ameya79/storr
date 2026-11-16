@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -20,8 +20,9 @@ import {
   GitCommitIcon,
 } from '@/components/SvgIcons';
 import { Skeleton } from '@/src/components/Skeleton';
-import { Plus, MoreVertical, Trash2, Briefcase } from 'lucide-react';
+import { Plus, MoreVertical, Trash2, Briefcase, RefreshCw } from 'lucide-react';
 import { useVault, selectApplicationsByVersion } from '@/store/useVault';
+import { ReplaceResumeModal } from '@/components/ReplaceResumeModal';
 import clsx from 'clsx';
 
 interface HeroVersionCardProps {
@@ -43,6 +44,7 @@ export function HeroVersionCard({
 }: HeroVersionCardProps) {
   const router = useRouter();
   const { manifest, softDeleteVersion } = useVault();
+  const [isReplaceOpen, setIsReplaceOpen] = useState(false);
   const commitCount = totalCommits ?? totalBranchVersions ?? 0;
   const applications = version ? selectApplicationsByVersion(manifest, version.id) : [];
 
@@ -232,7 +234,7 @@ export function HeroVersionCard({
       </div>
 
       {/* Action Buttons: 44px touch targets on mobile */}
-      <div className="grid grid-cols-4 gap-2 pt-3 border-t border-zinc-100 mt-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-3 border-t border-zinc-100 mt-3">
         <button
           type="button"
           onClick={handleOpenView}
@@ -240,6 +242,18 @@ export function HeroVersionCard({
         >
           <EyeIcon size={14} />
           <span>View</span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsReplaceOpen(true);
+          }}
+          className="inline-flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-white border border-zinc-200 text-zinc-800 text-xs font-mono font-medium hover:bg-zinc-50 hover:border-zinc-300 active:scale-98 transition-all min-h-[44px]"
+          title="Replace resume"
+        >
+          <RefreshCw size={14} className="text-zinc-600" />
+          <span className="inline">Replace</span>
         </button>
         <button
           type="button"
@@ -273,6 +287,12 @@ export function HeroVersionCard({
           <span className="hidden sm:inline">Delete</span>
         </button>
       </div>
+
+      <ReplaceResumeModal
+        isOpen={isReplaceOpen}
+        onClose={() => setIsReplaceOpen(false)}
+        version={version}
+      />
     </motion.div>
   );
 }

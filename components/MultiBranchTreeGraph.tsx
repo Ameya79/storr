@@ -19,7 +19,8 @@ import {
   DownloadIcon,
   ShareIcon,
 } from '@/components/SvgIcons';
-import { Plus, Trash2, MoreVertical, FileText, ExternalLink, ArrowRight, Briefcase } from 'lucide-react';
+import { Plus, Trash2, MoreVertical, FileText, ExternalLink, ArrowRight, Briefcase, RefreshCw } from 'lucide-react';
+import { ReplaceResumeModal } from '@/components/ReplaceResumeModal';
 import clsx from 'clsx';
 
 interface MultiBranchTreeGraphProps {
@@ -40,6 +41,7 @@ export function MultiBranchTreeGraph({
     version: Version;
     branch: Branch;
   } | null>(null);
+  const [versionToReplace, setVersionToReplace] = useState<Version | null>(null);
 
   const branches = selectOrderedBranches(manifest);
 
@@ -334,34 +336,49 @@ export function MultiBranchTreeGraph({
                                       e.stopPropagation();
                                       handleSelectResume(version);
                                     }}
-                                    className="text-zinc-900 font-semibold hover:underline flex items-center gap-1"
+                                    className="text-zinc-900 font-semibold hover:underline flex items-center gap-1 min-h-[44px] py-2"
                                   >
                                     <EyeIcon size={12} />
                                     <span>View</span>
                                   </button>
 
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setVersionToReplace(version);
+                                      }}
+                                      title="Replace resume"
+                                      aria-label="Replace resume"
+                                      className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+                                    >
+                                      <RefreshCw size={13} />
+                                    </button>
                                     <button
                                       type="button"
                                       onClick={(e) => handleDownload(e, version)}
-                                      title="Download"
-                                      className="p-1 rounded text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100"
+                                      title="Download file"
+                                      aria-label="Download file"
+                                      className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors"
                                     >
                                       <DownloadIcon size={12} />
                                     </button>
                                     <button
                                       type="button"
                                       onClick={(e) => handleShare(e, version)}
-                                      title="Share"
-                                      className="p-1 rounded text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100"
+                                      title="Share file"
+                                      aria-label="Share file"
+                                      className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors"
                                     >
                                       <ShareIcon size={12} />
                                     </button>
                                     <button
                                       type="button"
                                       onClick={(e) => handleMoveToTrash(e, version.id, version.label)}
-                                      title="Delete"
-                                      className="p-1 rounded text-zinc-400 hover:text-red-600 hover:bg-red-50"
+                                      title="Delete resume"
+                                      aria-label="Delete resume"
+                                      className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-zinc-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                                     >
                                       <Trash2 size={12} />
                                     </button>
@@ -522,13 +539,25 @@ export function MultiBranchTreeGraph({
                   <Trash2 size={14} />
                   <span>Move to Trash</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const v = selectedResumeForSheet.version;
+                    setSelectedResumeForSheet(null);
+                    setVersionToReplace(v);
+                  }}
+                  className="py-2.5 px-4 rounded-xl border border-zinc-200 bg-white text-zinc-900 text-xs font-medium hover:bg-zinc-50 flex items-center justify-center gap-2 min-h-[44px] col-span-2"
+                >
+                  <RefreshCw size={14} />
+                  <span>Replace Resume</span>
+                </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Modals for Create & Delete Branch */}
+      {/* Modals for Create & Delete Branch, and Replace Resume */}
       <CreateBranchModal
         isOpen={isCreateBranchOpen}
         onClose={() => setIsCreateBranchOpen(false)}
@@ -538,6 +567,12 @@ export function MultiBranchTreeGraph({
         isOpen={Boolean(branchToDelete)}
         branch={branchToDelete}
         onClose={() => setBranchToDelete(null)}
+      />
+
+      <ReplaceResumeModal
+        isOpen={Boolean(versionToReplace)}
+        version={versionToReplace}
+        onClose={() => setVersionToReplace(null)}
       />
     </div>
   );

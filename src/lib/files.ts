@@ -35,6 +35,23 @@ export function formatFileSize(bytes: number): string {
 }
 
 /**
+ * Safely reads a File or Blob into a Uint8Array, falling back to FileReader if .arrayBuffer() is missing.
+ */
+export async function readFileAsUint8Array(file: File | Blob): Promise<Uint8Array> {
+  if (typeof file.arrayBuffer === 'function') {
+    return new Uint8Array(await file.arrayBuffer());
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(new Uint8Array(reader.result as ArrayBuffer));
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/**
  * Computes SHA-256 hash using crypto.subtle.
  */
 export async function computeSha256(data: ArrayBuffer | Uint8Array | Blob): Promise<string> {

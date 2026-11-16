@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Version, Branch } from '@/types';
 import { formatVersionDate } from '@/lib/dates';
 import { PaperResumeIcon, EyeIcon } from '@/components/SvgIcons';
 import { useVault, selectApplicationsByVersion } from '@/store/useVault';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, RefreshCw } from 'lucide-react';
+import { ReplaceResumeModal } from '@/components/ReplaceResumeModal';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
 
@@ -25,6 +26,7 @@ export function BranchTreeVisualizer({
 }: BranchTreeVisualizerProps) {
   const router = useRouter();
   const { manifest } = useVault();
+  const [replaceTarget, setReplaceTarget] = useState<Version | null>(null);
   const effectiveLatestId =
     latestVersionId !== undefined ? latestVersionId : versions[0]?.id || null;
 
@@ -151,11 +153,28 @@ export function BranchTreeVisualizer({
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0">
+              <div className="flex items-center gap-1 opacity-80 sm:opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0">
                 <button
                   type="button"
-                  className="p-1.5 rounded-md hover:bg-zinc-100 text-zinc-600 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setReplaceTarget(version);
+                  }}
+                  className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-zinc-100 text-zinc-600 hover:text-zinc-950 transition-colors"
+                  aria-label="Replace resume"
+                  title="Replace resume"
+                >
+                  <RefreshCw size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelect(version);
+                  }}
+                  className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-zinc-100 text-zinc-600 hover:text-zinc-950 transition-colors"
                   aria-label="View version"
+                  title="View version"
                 >
                   <EyeIcon size={15} />
                 </button>
@@ -164,6 +183,12 @@ export function BranchTreeVisualizer({
           </motion.div>
         );
       })}
+
+      <ReplaceResumeModal
+        isOpen={Boolean(replaceTarget)}
+        onClose={() => setReplaceTarget(null)}
+        version={replaceTarget}
+      />
     </div>
   );
 }

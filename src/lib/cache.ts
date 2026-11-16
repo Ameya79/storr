@@ -21,27 +21,65 @@ export interface BlobMetaEntry {
 export type BlobMetaMap = Record<string, BlobMetaEntry>;
 
 export async function getCachedManifest(): Promise<Manifest | null> {
-  return (await get<Manifest>(KEY_MANIFEST)) || null;
+  const idbManifest = (await get<Manifest>(KEY_MANIFEST)) || null;
+  if (idbManifest) return idbManifest;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = localStorage.getItem(KEY_MANIFEST);
+      if (raw) return JSON.parse(raw);
+    }
+  } catch {}
+  return null;
 }
 
 export async function setCachedManifest(manifest: Manifest): Promise<void> {
   await set(KEY_MANIFEST, manifest);
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(KEY_MANIFEST, JSON.stringify(manifest));
+    }
+  } catch {}
 }
 
 export async function getCachedManifestSha(): Promise<string | null> {
-  return (await get<string>(KEY_MANIFEST_SHA)) || null;
+  const idbSha = (await get<string>(KEY_MANIFEST_SHA)) || null;
+  if (idbSha) return idbSha;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return localStorage.getItem(KEY_MANIFEST_SHA);
+    }
+  } catch {}
+  return null;
 }
 
 export async function setCachedManifestSha(sha: string): Promise<void> {
   await set(KEY_MANIFEST_SHA, sha);
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(KEY_MANIFEST_SHA, sha);
+    }
+  } catch {}
 }
 
 export async function getCachedOutbox(): Promise<OutboxOp[]> {
-  return (await get<OutboxOp[]>(KEY_OUTBOX)) || [];
+  const idbOutbox = (await get<OutboxOp[]>(KEY_OUTBOX)) || null;
+  if (idbOutbox) return idbOutbox;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = localStorage.getItem(KEY_OUTBOX);
+      if (raw) return JSON.parse(raw);
+    }
+  } catch {}
+  return [];
 }
 
 export async function setCachedOutbox(outbox: OutboxOp[]): Promise<void> {
   await set(KEY_OUTBOX, outbox);
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(KEY_OUTBOX, JSON.stringify(outbox));
+    }
+  } catch {}
 }
 
 export async function getLastSyncAt(): Promise<string | null> {
@@ -144,5 +182,13 @@ export async function clearAllCache(): Promise<void> {
       await del(k);
     }
   }
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(KEY_MANIFEST);
+      localStorage.removeItem(KEY_MANIFEST_SHA);
+      localStorage.removeItem(KEY_OUTBOX);
+      localStorage.removeItem(KEY_LAST_SYNC_AT);
+    }
+  } catch {}
 }
 

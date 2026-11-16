@@ -18,6 +18,7 @@ import {
   setCachedOutbox,
   getLastSyncAt,
   setLastSyncAt,
+  deleteCachedBlob,
 } from '@/lib/cache';
 import { compareVersionsDesc, latest } from '@/lib/dates';
 import { restoreConfigFromIndexedDB } from '@/lib/config';
@@ -65,6 +66,21 @@ interface VaultState {
     thumbPath: string | null;
   }) => Promise<Version>;
   updateVersion: (id: string, updates: Partial<Pick<Version, 'label' | 'note' | 'versionDate' | 'trackId'>>) => Promise<void>;
+  replaceVersion: (
+    id: string,
+    replacement: {
+      label: string;
+      fileName: string;
+      mime: string;
+      sizeBytes: number;
+      sha256: string;
+      filePath: string;
+      thumbPath: string | null;
+      note?: string;
+      tags?: string[];
+      versionDate?: string;
+    }
+  ) => Promise<Version>;
   moveVersion: (id: string, newBranchId: string) => Promise<void>;
   softDeleteVersion: (id: string) => Promise<void>;
   restoreVersion: (id: string) => Promise<void>;
@@ -465,6 +481,82 @@ export const useVault = create<VaultState>((set, get) => ({
     ]);
 
     requestDebouncedSync();
+  },
+
+  replaceVersion: async (id, replacement) => {
+    const current = get().manifest;
+    if (!current) throw new Error('Manifest not loaded');
+    const existing = current.versions.find((v) => v.id === id);
+    if (!existing) throw new Error(`Version with ID "${id}" not found`);
+
+    const now = new Date().toISOString();
+    const oldFilePath = existing.filePath;
+    const oldThumbPath = existing.thumbPath;
+
+    const updatedVersion: Version = {
+      ...existing,
+      label: replacement.label.trim(),
+      fileName: replacement.fileName,
+      mime: replacement.mime,
+      sizeBytes: replacement.sizeBytes,
+      sha256: replacement.sha256,
+      filePath: replacement.filePath,
+      thumbPath: replacement.thumbPath,
+      note: replacement.note !== undefined ? replacement.note : existing.note,
+      tags: replacement.tags !== undefined ? replacement.tags : existing.tags,
+      versionDate: replacement.versionDate || existing.versionDate,
+      updatedAt: now,
+    };
+
+    const nextManifest: Manifest = {
+      ...current,
+      updatedAt: now,
+      versions: current.versions.map((v) => (v.id === id ? updatedVersion : v)),
+    };
+
+    // Filter out any unsynced UPLOAD_BLOB for old paths if still pending in outbox
+    const cleanedOutbox = get().outbox.filter(
+      (op) =>
+        !(
+          op.type === 'UPLOAD_BLOB' &&
+          (op.path === oldFilePath || (oldThumbPath && op.path === oldThumbPath))
+        )
+    );
+
+    const ops: OutboxOp[] = [
+      { type: 'UPLOAD_BLOB', path: updatedVersion.filePath, key: updatedVersion.filePath },
+    ];
+    if (updatedVersion.thumbPath) {
+      ops.push({ type: 'UPLOAD_BLOB', path: updatedVersion.thumbPath, key: updatedVersion.thumbPath });
+    }
+    if (oldFilePath && oldFilePath !== updatedVersion.filePath) {
+      ops.push({ type: 'DELETE_BLOB', path: oldFilePath });
+    }
+    if (oldThumbPath && oldThumbPath !== updatedVersion.thumbPath) {
+      ops.push({ type: 'DELETE_BLOB', path: oldThumbPath });
+    }
+    ops.push({ type: 'UPSERT_VERSION', version: updatedVersion, id: updatedVersion.id });
+
+    const nextOutbox = [...cleanedOutbox, ...ops];
+
+    // Synchronously update Zustand state
+    set({ manifest: nextManifest, outbox: nextOutbox });
+
+    await Promise.all([
+      setCachedManifest(nextManifest),
+      setCachedOutbox(nextOutbox),
+    ]);
+
+    // Clean up local cache for old blobs if path changed
+    if (oldFilePath && oldFilePath !== updatedVersion.filePath) {
+      deleteCachedBlob(oldFilePath).catch(() => {});
+    }
+    if (oldThumbPath && oldThumbPath !== updatedVersion.thumbPath) {
+      deleteCachedBlob(oldThumbPath).catch(() => {});
+    }
+
+    requestDebouncedSync();
+    return updatedVersion;
   },
 
   moveVersion: async (id, newBranchId) => {

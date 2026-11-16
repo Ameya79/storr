@@ -10,6 +10,7 @@ import {
   selectVersionsByBranch,
 } from '@/store/useVault';
 import { groupByMonth } from '@/lib/dates';
+import { Version } from '@/types';
 import { BranchBadge } from '@/components/BranchBadge';
 import { BranchTreeVisualizer } from '@/components/BranchTreeVisualizer';
 import { AnimatedBottomSheet } from '@/components/AnimatedBottomSheet';
@@ -29,8 +30,10 @@ import {
   ExternalLink,
   Tag,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import { DeleteBranchModal } from '@/components/BranchModal';
+import { ReplaceResumeModal } from '@/components/ReplaceResumeModal';
 
 export default function BranchDetailPage() {
   const params = useParams();
@@ -56,6 +59,7 @@ export default function BranchDetailPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editName, setEditName] = useState(branch?.name || '');
   const [editColor, setEditColor] = useState(branch?.color || '#18181B');
+  const [replaceVersionTarget, setReplaceVersionTarget] = useState<Version | null>(null);
 
   if (!branch) {
     return (
@@ -102,7 +106,7 @@ export default function BranchDetailPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="w-9 h-9 rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:text-zinc-950 hover:bg-zinc-50 transition-colors"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:text-zinc-950 hover:bg-zinc-50 transition-colors"
             aria-label="Back to overview"
           >
             <ArrowLeft size={16} />
@@ -132,7 +136,7 @@ export default function BranchDetailPage() {
         <div className="flex items-center gap-2">
           <Link
             href={`/add?branch=${branch.id}`}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium hover:bg-zinc-800 transition-colors"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium hover:bg-zinc-800 transition-colors"
           >
             <Plus size={14} />
             <span>Commit Version</span>
@@ -141,7 +145,7 @@ export default function BranchDetailPage() {
           <button
             type="button"
             onClick={() => setIsOptionsOpen(true)}
-            className="w-9 h-9 rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:text-zinc-950 hover:bg-zinc-50 transition-colors"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:text-zinc-950 hover:bg-zinc-50 transition-colors"
             aria-label="Branch settings"
           >
             <Settings2 size={16} />
@@ -223,10 +227,23 @@ export default function BranchDetailPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
                         <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-zinc-200 text-zinc-600 bg-white">
                           {ver.fileName.endsWith('.pdf') ? 'PDF' : 'DOCX'}
                         </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setReplaceVersionTarget(ver);
+                          }}
+                          className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+                          title="Replace resume"
+                          aria-label="Replace resume"
+                        >
+                          <RefreshCw size={13} />
+                        </button>
                         <ExternalLink size={13} className="text-zinc-400 group-hover:text-zinc-900" />
                       </div>
                     </Link>
@@ -339,19 +356,25 @@ export default function BranchDetailPage() {
             <button
               type="button"
               onClick={() => setIsEditOpen(false)}
-              className="flex-1 py-2.5 px-4 rounded-xl border border-zinc-200 text-xs font-mono font-medium hover:bg-zinc-50"
+              className="flex-1 py-2.5 px-4 rounded-xl border border-zinc-200 text-xs font-mono font-medium hover:bg-zinc-50 min-h-[44px]"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium hover:bg-zinc-800"
+              className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-950 text-white text-xs font-mono font-medium hover:bg-zinc-800 min-h-[44px]"
             >
               Save Changes
             </button>
           </div>
         </form>
       </AnimatedBottomSheet>
+
+      <ReplaceResumeModal
+        isOpen={Boolean(replaceVersionTarget)}
+        onClose={() => setReplaceVersionTarget(null)}
+        version={replaceVersionTarget}
+      />
     </div>
   );
 }
