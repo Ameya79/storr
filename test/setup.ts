@@ -1,9 +1,35 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
+import { createHash } from 'node:crypto';
 
 // Polyfill structuredClone if needed
 if (typeof structuredClone === 'undefined') {
   global.structuredClone = (val: unknown) => JSON.parse(JSON.stringify(val));
+}
+
+// Polyfill/wrap crypto.subtle.digest for cross-realm compatibility in jsdom tests
+if (typeof crypto !== 'undefined' && crypto.subtle) {
+  const originalDigest = crypto.subtle.digest.bind(crypto.subtle);
+  crypto.subtle.digest = async function (algorithm: any, data: any) {
+    try {
+      return await originalDigest(algorithm, data);
+    } catch {
+      const algo = typeof algorithm === 'string' ? algorithm : algorithm?.name;
+      if (algo?.toUpperCase() === 'SHA-256') {
+        let buf: Buffer;
+        if (data instanceof ArrayBuffer) {
+          buf = Buffer.from(data);
+        } else if (ArrayBuffer.isView(data) || (data && 'buffer' in data)) {
+          buf = Buffer.from(data.buffer, data.byteOffset || 0, data.byteLength || data.buffer.byteLength);
+        } else {
+          buf = Buffer.from(data);
+        }
+        const hash = createHash('sha256').update(buf).digest();
+        return hash.buffer.slice(hash.byteOffset, hash.byteOffset + hash.byteLength);
+      }
+      throw new Error(`Unsupported algorithm: ${algo}`);
+    }
+  };
 }
 
 // Polyfill Blob.prototype.arrayBuffer if needed in jsdom

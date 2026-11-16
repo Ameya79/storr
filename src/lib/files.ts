@@ -52,18 +52,40 @@ export async function readFileAsUint8Array(file: File | Blob): Promise<Uint8Arra
 }
 
 /**
- * Computes SHA-256 hash using crypto.subtle.
+ * Computes SHA-256 hash using Node crypto (in server/test environments) or crypto.subtle (in browser).
  */
-export async function computeSha256(data: ArrayBuffer | Uint8Array | Blob): Promise<string> {
-  let buffer: ArrayBuffer;
-  if (data instanceof Blob) {
+export async function computeSha256(data: ArrayBuffer | Uint8Array | Blob | ArrayBufferView): Promise<string> {
+  // If running in Node.js / Vitest test environment, use Node crypto to avoid jsdom cross-realm BufferSource issues
+  if (typeof process !== 'undefined' && process.versions?.node) {
+    try {
+      const nodeCrypto = await import('crypto');
+      let bytes: Uint8Array;
+      if (typeof Blob !== 'undefined' && data instanceof Blob) {
+        bytes = new Uint8Array(await data.arrayBuffer());
+      } else if (data instanceof ArrayBuffer) {
+        bytes = new Uint8Array(data);
+      } else if (ArrayBuffer.isView(data) || (data && 'buffer' in (data as any))) {
+        const view = data as ArrayBufferView;
+        bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+      } else {
+        bytes = new Uint8Array(data as any);
+      }
+      return nodeCrypto.createHash('sha256').update(Buffer.from(bytes)).digest('hex');
+    } catch {
+      // Fall through to crypto.subtle
+    }
+  }
+
+  let buffer: BufferSource;
+  if (typeof Blob !== 'undefined' && data instanceof Blob) {
     buffer = await data.arrayBuffer();
-  } else if (data instanceof Uint8Array) {
-    const copy = new Uint8Array(data.byteLength);
-    copy.set(data);
-    buffer = copy.buffer;
-  } else {
+  } else if (data instanceof ArrayBuffer) {
     buffer = data;
+  } else if (ArrayBuffer.isView(data) || (data && typeof (data as any).byteLength === 'number' && 'buffer' in (data as any))) {
+    const view = data as ArrayBufferView;
+    buffer = new Uint8Array(view.buffer as ArrayBuffer, view.byteOffset, view.byteLength) as BufferSource;
+  } else {
+    buffer = data as unknown as BufferSource;
   }
 
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
