@@ -36,3 +36,6 @@ tsconfig.tsbuildinfo
 *.sln
 *.sw?
 
+# Gemini local rules & agent workflows
+.gemini/
+
